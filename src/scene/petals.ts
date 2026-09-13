@@ -47,7 +47,7 @@ export class PetalLayer {
     this.mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage)
     this.states = Array.from({ length: count }, () => ({
       horizontal: Math.random(), vertical: Math.random(), rotation: Math.random() * Math.PI * 2,
-      size: 0.009 + Math.random() * 0.011, phase: Math.random() * Math.PI * 2, depth: 0.4 + Math.random() * 0.6,
+      size: 0.015 + Math.random() * 0.017, phase: Math.random() * Math.PI * 2, depth: 0.4 + Math.random() * 0.6,
     }))
   }
 
