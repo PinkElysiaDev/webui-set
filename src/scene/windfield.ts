@@ -50,8 +50,8 @@ export class WindField {
     const dist2 = dx * dx + dy * dy
     const radius = 0.16
     const falloff = Math.exp(-dist2 / (radius * radius))
-    x += this.pointer.vx * 0.5 * falloff
-    y -= this.pointer.vy * 0.5 * falloff
+    x += this.pointer.vx * 0.2 * falloff * this.calm
+    y += this.pointer.vy * 0.2 * falloff * this.calm
 
     return { x, y, strength: Math.hypot(x, y) }
   }

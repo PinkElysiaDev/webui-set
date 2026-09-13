@@ -9,13 +9,19 @@
   --amber: #d97706;
   --orchid: #8b5cd6;
   --halo: rgba(255, 226, 240, 0.9);
+  --particle-tint: #f9a8c9;
+  --seal-color: #d97706;
+  --seal-glow: rgba(217, 119, 6, 0.3);
+  --sky-top: #fbf6ff;
+  --sky-horizon: #ffffff;
+  --error-bg: rgba(181, 41, 70, 0.1);
 }
 
 body {
   margin: 0;
   font-family: 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
   color: var(--ink);
-  background: #f7eef3;
+  background: linear-gradient(var(--sky-top), var(--sky-horizon));
 }
 
 #root {
@@ -29,11 +35,15 @@ body {
   --card: rgba(26, 20, 38, 0.55);
   --card-border: rgba(255, 255, 255, 0.14);
   --line: rgba(243, 230, 239, 0.35);
+  --primary: #b8bcff;
+  --particle-tint: #decaff;
+  --halo: rgba(201, 200, 255, 0.9);
 }
 
 .stage-root {
   position: fixed;
   inset: 0;
+  background: linear-gradient(var(--sky-top), var(--sky-horizon));
 }
 
 .stage-root canvas {
@@ -51,7 +61,8 @@ body {
 
 .login-card {
   pointer-events: auto;
-  width: min(400px, calc(100vw - 48px));
+  box-sizing: border-box;
+  width: min(440px, calc(100vw - 48px));
   margin-left: clamp(24px, 7vw, 120px);
   padding: 34px 34px 28px;
   border-radius: 18px;
@@ -60,7 +71,6 @@ body {
   backdrop-filter: blur(16px) saturate(1.15);
   -webkit-backdrop-filter: blur(16px) saturate(1.15);
   box-shadow: 0 18px 50px rgba(80, 20, 50, 0.18);
-  transition: background 1.2s ease, border-color 1.2s ease;
 }
 
 .brand {
@@ -98,6 +108,7 @@ body {
 }
 
 .line-input input {
+  box-sizing: border-box;
   width: 100%;
   height: 40px;
   padding: 0 30px 8px 0;
@@ -154,7 +165,7 @@ body {
   font-size: 12px;
   font-weight: 500;
   color: var(--ember);
-  background: rgba(212, 61, 81, 0.12);
+  background: var(--error-bg);
 }
 
 /* 粒子按钮 */
@@ -187,10 +198,11 @@ body {
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  transition: color 0.25s ease, background 0.25s ease;
+  transition: box-shadow 0.25s ease;
 }
 
-.login-btn:hover:not(:disabled) {
+.login-btn:hover:not(:disabled),
+.login-btn:focus-visible:not(:disabled) {
   color: var(--primary);
 }
 
@@ -239,17 +251,17 @@ body {
   align-items: center;
   justify-content: center;
   border-radius: 999px;
-  border: 1.5px solid var(--amber);
+  border: 1.5px solid var(--seal-color);
   background: transparent;
   transform: rotate(-8deg);
   cursor: pointer;
-  transition: border-color 0.6s ease, box-shadow 0.6s ease, filter 0.3s ease;
-  box-shadow: 0 0 12px rgba(245, 158, 11, 0.35);
+  transition: filter 0.3s ease;
+  box-shadow: 0 0 12px var(--seal-glow);
 }
 
 .seal-toggle.night {
-  border-color: var(--orchid);
-  box-shadow: 0 0 12px rgba(139, 92, 214, 0.4);
+  border-color: var(--seal-color);
+  box-shadow: 0 0 12px var(--seal-glow);
 }
 
 .seal-toggle:hover {
@@ -303,13 +315,13 @@ body {
   align-items: center;
   justify-content: center;
   gap: 14px;
-  background: linear-gradient(172deg, #ffe9f3 0%, #f6d9e8 55%, #eec3da 100%);
-  color: #40222f;
+  background: linear-gradient(172deg, var(--sky-top), var(--sky-horizon));
+  color: var(--ink);
 }
 
 .theme-night .home {
-  background: linear-gradient(172deg, #221a3a 0%, #191430 55%, #120e22 100%);
-  color: #f3e6ef;
+  background: linear-gradient(172deg, var(--sky-top), var(--sky-horizon));
+  color: var(--ink);
 }
 
 .home h1 {
@@ -329,21 +341,100 @@ body {
   margin-top: 18px;
   padding: 9px 26px;
   border-radius: 999px;
-  border: 1px solid rgba(220, 24, 93, 0.4);
+  border: 1px solid var(--home-border);
   background: transparent;
-  color: #dc185d;
+  color: var(--primary);
   font-size: 13px;
   cursor: pointer;
   transition: background 0.25s ease, color 0.25s ease;
 }
 
 .home button:hover {
-  background: rgba(220, 24, 93, 0.1);
+  background: var(--home-hover);
 }
 
 @media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    transition-duration: 0s !important;
+    animation: none !important;
+  }
   .halo.play {
     animation: none;
     opacity: 0;
+  }
+}
+
+button:focus-visible,
+summary:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 5px;
+}
+
+.scene-status {
+  position: fixed;
+  right: 16px;
+  bottom: 38px;
+  z-index: 20;
+  max-width: min(340px, calc(100vw - 100px));
+  padding: 8px 12px;
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  background: var(--card);
+  backdrop-filter: blur(12px);
+  color: var(--ink-soft);
+  font-size: 11px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.scene-status summary {
+  cursor: pointer;
+}
+
+.scene-status ul {
+  margin: 8px 0 0;
+  padding-left: 16px;
+}
+
+.scene-status.has-error {
+  color: var(--ink);
+}
+
+.scene-status button {
+  margin-top: 10px;
+  padding: 6px 10px;
+  border: 1px solid var(--primary);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--primary);
+  cursor: pointer;
+}
+
+.scene-status button:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+
+@media (max-width: 767px) {
+  .login-layer {
+    align-items: flex-end;
+    padding-bottom: max(110px, env(safe-area-inset-bottom));
+    box-sizing: border-box;
+  }
+
+  .login-card {
+    width: calc(100vw - 32px);
+    margin-left: 16px;
+    padding: 24px;
+  }
+
+  .brand { margin-bottom: 18px; }
+  .title { margin-bottom: 14px; }
+  .credits {
+    left: 16px;
+    right: 16px;
+    bottom: 8px;
+    text-align: right;
+    font-size: 9px;
   }
 }

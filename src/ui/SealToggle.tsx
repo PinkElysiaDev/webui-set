@@ -19,11 +19,11 @@ export function SealToggle({ night, onToggle }: { night: boolean; onToggle: () =
             rx="2.1"
             ry="3.4"
             transform={`rotate(${angle} 12 12)`}
-            fill={night ? 'var(--orchid)' : 'var(--amber)'}
+            fill="var(--seal-color)"
             opacity="0.85"
           />
         ))}
-        <circle cx="12" cy="12" r="1.6" fill={night ? '#cfe0ff' : '#fff0d6'} />
+        <circle cx="12" cy="12" r="1.6" fill="var(--halo)" />
       </svg>
     </button>
   )

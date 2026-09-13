@@ -1,96 +1,92 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Stage } from '../scene/stage'
+import { errorMessage, initialSceneStatus, type SceneStatus } from '../scene/resources'
 import { DEMO_TOKEN_KEY } from '../app/App'
+import { useSceneTheme } from '../app/theme'
 import { ParticleButton } from './ParticleButton'
 import { SealToggle } from './SealToggle'
 import { TokenLineInput } from './TokenLineInput'
 
-/**
- * 登录展示页：右侧风吹花海 + MMD 长发角色（canvas），左侧玻璃态表单（DOM）。
- * 密钥固定 123；成功转场 = 风息 → 角色开心 → 光晕扩散 → 进入 /home。
- */
 export function LoginPage() {
   const mountRef = useRef<HTMLDivElement>(null)
   const stageRef = useRef<Stage | null>(null)
   const haloRef = useRef<HTMLDivElement>(null)
-  const [ready, setReady] = useState(false)
-  const [night, setNight] = useState(false)
+  const timersRef = useRef<number[]>([])
+  const { controller, mode, reducedMotion, toggleMode } = useSceneTheme()
+  const [status, setStatus] = useState<SceneStatus>(initialSceneStatus)
+  const [attempt, setAttempt] = useState(0)
   const [value, setValue] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!mountRef.current) return
-    const stage = new Stage(mountRef.current, {
-      reducedMotion: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
-      onProgress: (ratio) => {
-        if (ratio >= 1) setReady(true)
-      },
-    })
-    stageRef.current = stage
+    setStatus(initialSceneStatus())
+    try {
+      stageRef.current = new Stage(mountRef.current, { reducedMotion, theme: controller, onStatus: setStatus })
+    } catch (failure) {
+      setStatus({
+        renderer: { state: 'error', message: `无法启动图形场景：${errorMessage(failure)}`, retryable: true },
+        flowers: { state: 'degraded', message: '保留天空背景' },
+      })
+    }
     return () => {
-      stage.dispose()
+      stageRef.current?.dispose()
       stageRef.current = null
     }
-  }, [])
+  }, [controller, reducedMotion, attempt])
 
-  function toggleNight() {
-    const next = !night
-    setNight(next)
-    stageRef.current?.dayNight.setMode(next ? 'night' : 'day')
-    document.documentElement.classList.toggle('theme-night', next)
+  useEffect(() => () => timersRef.current.forEach(clearTimeout), [])
+
+  const resources = Object.entries(status)
+  const pending = resources.some(([, resource]) => resource.state === 'loading')
+  const retryable = resources.some(([, resource]) => resource.retryable)
+  const complete = resources.every(([, resource]) => resource.state === 'ready')
+
+  function retry() {
+    if (status.renderer.state === 'error' || !stageRef.current) setAttempt(current => current + 1)
+    else stageRef.current.retry()
   }
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault()
+    if (loading) return
     const token = value.trim()
-    if (!token) {
-      setError('请输入 Panel Access Token')
-      return
-    }
-    if (token !== '123') {
-      setError('密钥不正确（demo 密钥为 123）')
-      return
-    }
+    if (!token) { setError('请输入 Panel Access Token'); return }
+    if (token !== '123') { setError('密钥不正确（demo 密钥为 123）'); return }
     setLoading(true)
     setError(null)
-    stageRef.current?.calmWind() // 风息
-    stageRef.current?.setHappyMood() // 角色开心
-    setTimeout(() => haloRef.current?.classList.add('play'), 350) // 光晕
-    setTimeout(() => {
+    stageRef.current?.calmWind()
+    if (!reducedMotion) timersRef.current.push(window.setTimeout(() => haloRef.current?.classList.add('play'), 350))
+    timersRef.current.push(window.setTimeout(() => {
       sessionStorage.setItem(DEMO_TOKEN_KEY, '123')
       window.location.hash = '#/home'
-    }, 1150)
+    }, reducedMotion ? 0 : 1150))
   }
 
   return (
-    <div>
+    <div className="login-page">
       <div ref={mountRef} className="stage-root" />
       <div className="login-layer">
         <form className="login-card" onSubmit={handleSubmit}>
-          <div className="brand">
-            <b>Elysia API</b>
-            <span>Console</span>
-          </div>
+          <div className="brand"><b>Elysia API</b><span>Console</span></div>
           <h1 className="title">Panel Access Token</h1>
-          <TokenLineInput
-            value={value}
-            onChange={(next) => {
-              setValue(next)
-              setError(null)
-            }}
-          />
-          {error && <div className="error-tip">{error}</div>}
+          <TokenLineInput value={value} onChange={next => { setValue(next); setError(null) }} />
+          {error && <div className="error-tip" role="alert">{error}</div>}
           <ParticleButton loading={loading}>
-            {loading ? '身份验证中…' : ready ? '立即登录' : '场景加载中…'}
+            {loading ? '身份验证中…' : '立即登录'}
           </ParticleButton>
         </form>
       </div>
-      <SealToggle night={night} onToggle={toggleNight} />
+      <SealToggle night={mode === 'night'} onToggle={toggleMode} />
       <div ref={haloRef} className="halo" aria-hidden />
-      <div className="credits">
-        模型：神帝宇 制作 · 版权 miHoYo · 仅内部展示（禁二次配布 / 禁商用）
-      </div>
+      <details className={`scene-status ${retryable ? 'has-error' : ''}`} open={pending || retryable}>
+        <summary aria-live="polite">{pending ? '场景加载中 · 登录可用' : complete ? '花海已就绪' : retryable ? '场景部分可用 · 查看详情' : '静态场景已就绪'}</summary>
+        <ul>
+          {resources.map(([name, resource]) => <li key={name} data-state={resource.state}>{resource.message}</li>)}
+        </ul>
+        {retryable && <button type="button" onClick={retry} disabled={pending}>重试场景资源</button>}
+      </details>
     </div>
   )
 }

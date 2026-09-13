@@ -1,143 +1,116 @@
 import * as THREE from 'three'
 
-/**
- * 昼夜系统：灯光组 / 后处理调色 / 星野 的目标值与 1.2s 平滑过渡。
- * mode: 'day' | 'night'
- */
-export interface DayNightPalette {
-  key: { color: number; intensity: number }
-  fill: { color: number; intensity: number }
-  rim: { color: number; intensity: number }
-  hemi: { sky: number; ground: number; intensity: number }
+export type ThemeMode = 'day' | 'night'
+
+const DAY_COLORS = {
+  skyTop: '#fbf6ff', skyHorizon: '#ffffff', skyGlow: '#ffeef7',
+  key: '#fff3ea', fill: '#ffe3f1', rim: '#ffffff', ground: '#ead5e2',
+  flowers: '#ffffff', petal: '#ef9bc2', petalEdge: '#ffdfea',
+  ink: '#2b1a22', card: '#ffffff', primary: '#dc185d', particle: '#f9a8c9',
+  halo: '#ffe2f0', seal: '#d97706', error: '#b52946',
+}
+
+const NIGHT_COLORS: typeof DAY_COLORS = {
+  skyTop: '#14182f', skyHorizon: '#342642', skyGlow: '#645581',
+  key: '#bdcaff', fill: '#c1a4ee', rim: '#e1e7ff', ground: '#353355',
+  flowers: '#929bcf', petal: '#b6baff', petalEdge: '#e1d7ff',
+  ink: '#f3eaf9', card: '#211d37', primary: '#b8bcff', particle: '#decaff',
+  halo: '#c9c8ff', seal: '#b8bcff', error: '#ffb4c4',
+}
+
+type ThemeColors = { [Key in keyof typeof DAY_COLORS]: THREE.Color }
+
+export interface ThemeSnapshot {
+  colors: ThemeColors
+  blend: number
+  keyIntensity: number
+  fillIntensity: number
+  rimIntensity: number
+  hemiIntensity: number
   bloom: number
-  /** 背景板调色：乘性色温 + 加性辉光 */
-  backdropMul: THREE.Color
-  backdropAdd: THREE.Color
-  /** 星野可见度 */
-  stars: number
-  /** 后处理整体调色 */
-  gradeMul: THREE.Color
-  gradeAdd: THREE.Color
 }
 
-export const DAY_PALETTE: DayNightPalette = {
-  key: { color: 0xfff2e0, intensity: 1.15 },
-  fill: { color: 0xffd6ea, intensity: 0.55 },
-  rim: { color: 0xffffff, intensity: 0.45 },
-  hemi: { sky: 0xffe6f2, ground: 0xffdce8, intensity: 0.65 },
-  bloom: 0.32,
-  backdropMul: new THREE.Color(1.0, 0.99, 0.97),
-  backdropAdd: new THREE.Color(0.0, 0.0, 0.01),
-  stars: 0,
-  gradeMul: new THREE.Color(1, 1, 1),
-  gradeAdd: new THREE.Color(0, 0, 0),
-}
-
-export const NIGHT_PALETTE: DayNightPalette = {
-  key: { color: 0x8fa4ff, intensity: 0.6 },
-  fill: { color: 0xb48ce8, intensity: 0.38 },
-  rim: { color: 0xcfe0ff, intensity: 0.75 },
-  hemi: { sky: 0x6f7fd0, ground: 0x2a2a55, intensity: 0.45 },
-  bloom: 0.6,
-  backdropMul: new THREE.Color(0.5, 0.56, 0.82),
-  backdropAdd: new THREE.Color(0.015, 0.02, 0.05),
-  stars: 1,
-  gradeMul: new THREE.Color(0.82, 0.85, 1.0),
-  gradeAdd: new THREE.Color(0.01, 0.012, 0.035),
-}
+const dayColors = makeColors(DAY_COLORS)
+const nightColors = makeColors(NIGHT_COLORS)
 
 export class DayNightController {
-  mode: 'day' | 'night' = 'day'
-  private blend = 0 // 0=day 1=night
-  private target = 0
-  private current: DayNightControllerSnapshot = snapshotFromPalette(DAY_PALETTE)
-
-  constructor() {
-    this.current = snapshotFromPalette(DAY_PALETTE)
+  mode: ThemeMode
+  private blend: number
+  private target: number
+  private listeners = new Set<() => void>()
+  readonly snapshot: ThemeSnapshot = {
+    colors: makeColors(DAY_COLORS), blend: 0,
+    keyIntensity: 1, fillIntensity: 0.45, rimIntensity: 0.65,
+    hemiIntensity: 1, bloom: 0.06,
   }
 
-  setMode(mode: 'day' | 'night') {
+  constructor(mode: ThemeMode = 'day') {
+    this.mode = mode
+    this.blend = this.target = mode === 'night' ? 1 : 0
+    this.refresh()
+  }
+
+  get settled() {
+    return this.blend === this.target
+  }
+
+  setMode(mode: ThemeMode, immediate = false) {
     this.mode = mode
     this.target = mode === 'night' ? 1 : 0
+    if (immediate) this.blend = this.target
+    this.refresh()
   }
 
-  /** 过渡进度（供 UI/场景查询） */
-  get value(): number {
-    return this.current.blend
+  update(delta: number) {
+    const distance = this.target - this.blend
+    this.blend += Math.sign(distance) * Math.min(Math.abs(distance), delta / 1.2)
+    this.refresh()
   }
 
-  update(dt: number) {
-    const speed = 1 / 1.2 // 1.2s 完成
-    const next = THREE.MathUtils.clamp(
-      this.blend + Math.sign(this.target - this.blend) * dt * speed,
-      0,
-      1,
-    )
-    this.blend = next
-    const eased = easeInOut(next)
-    this.current = mixSnapshot(DAY_PALETTE, NIGHT_PALETTE, eased)
-    this.current.blend = eased
+  subscribe(listener: () => void) {
+    this.listeners.add(listener)
+    return () => { this.listeners.delete(listener) }
   }
 
-  get snapshot(): DayNightControllerSnapshot {
-    return this.current
-  }
-}
-
-export interface DayNightControllerSnapshot {
-  key: { color: THREE.Color; intensity: number }
-  fill: { color: THREE.Color; intensity: number }
-  rim: { color: THREE.Color; intensity: number }
-  hemi: { skyColor: THREE.Color; groundColor: THREE.Color; intensity: number }
-  bloom: number
-  backdropMul: THREE.Color
-  backdropAdd: THREE.Color
-  stars: number
-  gradeMul: THREE.Color
-  gradeAdd: THREE.Color
-  blend: number
-}
-
-function snapshotFromPalette(p: DayNightPalette): DayNightControllerSnapshot {
-  return {
-    key: { color: new THREE.Color(p.key.color), intensity: p.key.intensity },
-    fill: { color: new THREE.Color(p.fill.color), intensity: p.fill.intensity },
-    rim: { color: new THREE.Color(p.rim.color), intensity: p.rim.intensity },
-    hemi: {
-      skyColor: new THREE.Color(p.hemi.sky),
-      groundColor: new THREE.Color(p.hemi.ground),
-      intensity: p.hemi.intensity,
-    },
-    bloom: p.bloom,
-    backdropMul: p.backdropMul.clone(),
-    backdropAdd: p.backdropAdd.clone(),
-    stars: p.stars,
-    gradeMul: p.gradeMul.clone(),
-    gradeAdd: p.gradeAdd.clone(),
-    blend: 0,
+  private refresh() {
+    const blend = this.blend < 0.5
+      ? 2 * this.blend * this.blend
+      : 1 - Math.pow(-2 * this.blend + 2, 2) / 2
+    const snapshot = this.snapshot
+    snapshot.blend = blend
+    for (const name of Object.keys(dayColors) as (keyof ThemeColors)[]) {
+      snapshot.colors[name].copy(dayColors[name]).lerp(nightColors[name], blend)
+    }
+    snapshot.keyIntensity = THREE.MathUtils.lerp(1, 0.7, blend)
+    snapshot.fillIntensity = THREE.MathUtils.lerp(0.45, 0.4, blend)
+    snapshot.rimIntensity = THREE.MathUtils.lerp(0.65, 0.95, blend)
+    snapshot.hemiIntensity = THREE.MathUtils.lerp(1, 0.65, blend)
+    snapshot.bloom = THREE.MathUtils.lerp(0.3, 0.55, blend)
+    this.listeners.forEach(listener => listener())
   }
 }
 
-function mixSnapshot(a: DayNightPalette, b: DayNightPalette, t: number): DayNightControllerSnapshot {
-  const s = snapshotFromPalette(a)
-  s.key.color.lerp(new THREE.Color(b.key.color), t)
-  s.key.intensity = THREE.MathUtils.lerp(a.key.intensity, b.key.intensity, t)
-  s.fill.color.lerp(new THREE.Color(b.fill.color), t)
-  s.fill.intensity = THREE.MathUtils.lerp(a.fill.intensity, b.fill.intensity, t)
-  s.rim.color.lerp(new THREE.Color(b.rim.color), t)
-  s.rim.intensity = THREE.MathUtils.lerp(a.rim.intensity, b.rim.intensity, t)
-  s.hemi.skyColor.lerp(new THREE.Color(b.hemi.sky), t)
-  s.hemi.groundColor.lerp(new THREE.Color(b.hemi.ground), t)
-  s.hemi.intensity = THREE.MathUtils.lerp(a.hemi.intensity, b.hemi.intensity, t)
-  s.bloom = THREE.MathUtils.lerp(a.bloom, b.bloom, t)
-  s.backdropMul.copy(a.backdropMul).lerp(b.backdropMul, t)
-  s.backdropAdd.copy(a.backdropAdd).lerp(b.backdropAdd, t)
-  s.stars = THREE.MathUtils.lerp(a.stars, b.stars, t)
-  s.gradeMul.copy(a.gradeMul).lerp(b.gradeMul, t)
-  s.gradeAdd.copy(a.gradeAdd).lerp(b.gradeAdd, t)
-  return s
+function makeColors(values: typeof DAY_COLORS): ThemeColors {
+  return Object.fromEntries(Object.entries(values).map(([name, value]) => [name, new THREE.Color(value)])) as ThemeColors
 }
 
-function easeInOut(t: number): number {
-  return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2
+export function applyTheme(snapshot: ThemeSnapshot) {
+  const { colors, blend } = snapshot
+  const style = document.documentElement.style
+  const color = (value: THREE.Color, alpha?: number) => {
+    const css = value.getStyle()
+    return alpha === undefined ? css : css.replace('rgb(', 'rgba(').replace(')', `,${alpha})`)
+  }
+  const variables = {
+    ink: color(colors.ink), 'ink-soft': color(colors.ink, 0.64),
+    card: color(colors.card, 0.62), 'card-border': `rgba(255,255,255,${0.7 - blend * 0.52})`,
+    line: color(colors.ink, 0.35), primary: color(colors.primary),
+    'particle-tint': color(colors.particle), halo: color(colors.halo, 0.9),
+    'seal-color': color(colors.seal), 'seal-glow': color(colors.seal, 0.3),
+    ember: color(colors.error), 'error-bg': color(colors.error, 0.1),
+    'sky-top': color(colors.skyTop), 'sky-horizon': color(colors.skyHorizon),
+    'home-border': color(colors.primary, 0.4), 'home-hover': color(colors.primary, 0.1),
+  }
+  for (const [name, value] of Object.entries(variables)) style.setProperty(`--${name}`, value)
+  style.colorScheme = blend > 0.5 ? 'dark' : 'light'
 }

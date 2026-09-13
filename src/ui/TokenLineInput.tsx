@@ -14,6 +14,7 @@ export function TokenLineInput({
       <input
         type={visible ? 'text' : 'password'}
         aria-label="Panel Access Token"
+        autoComplete="off"
         autoFocus
         value={value}
         placeholder="请输入访问令牌"
@@ -22,7 +23,6 @@ export function TokenLineInput({
       <span className="ink-line" aria-hidden />
       <button
         type="button"
-        tabIndex={-1}
         className="eye"
         onClick={() => setVisible((v) => !v)}
         aria-label={visible ? '隐藏' : '显示'}

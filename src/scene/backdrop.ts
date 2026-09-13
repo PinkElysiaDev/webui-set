@@ -1,11 +1,28 @@
 import * as THREE from 'three'
+import type { ThemeSnapshot } from './daynight'
+import type { WindField } from './windfield'
+import { waitForResource } from './resources'
 
-/**
- * 花海背景板：挂在相机前方 z=-40 的全屏面片。
- * shader 职责：cover 铺图、顶部草浪随风摆（uniform 采样风场）、
- * 昼夜乘加调色、夜间星野淡入。
- */
-const BACKDROP_VERT = /* glsl */ `
+export interface FlowerLayerConfig {
+  name: 'far' | 'mid' | 'front'
+  shift: readonly [number, number]
+  scale: number
+  root: number
+  tip: number
+  amplitude: number
+  frequency: number
+  phase: number
+}
+
+export const FLOWER_CANVAS = { width: 3840, height: 2160 }
+
+export const FLOWER_LAYERS: readonly FlowerLayerConfig[] = [
+  { name: 'far', shift: [0, 0.14], scale: 1, root: 0.31, tip: 0.57, amplitude: 0.006, frequency: 1.0, phase: 0.4 },
+  { name: 'mid', shift: [0, 0.24], scale: 1, root: 0.25, tip: 0.62, amplitude: 0.013, frequency: 1.45, phase: 1.8 },
+  { name: 'front', shift: [0, 0.04], scale: 1, root: 0, tip: 0.48, amplitude: 0.022, frequency: 1.9, phase: 3.2 },
+]
+
+const VERTEX = `
   varying vec2 vUv;
   void main() {
     vUv = uv;
@@ -13,101 +30,86 @@ const BACKDROP_VERT = /* glsl */ `
   }
 `
 
-const BACKDROP_FRAG = /* glsl */ `
+const FRAGMENT = `
   uniform sampler2D uMap;
-  uniform vec2 uUvScale;
-  uniform vec2 uUvOffset;
+  uniform vec2 uCover;
+  uniform vec2 uShift;
+  uniform float uScale;
+  uniform vec2 uRootTip;
+  uniform vec3 uWave;
   uniform float uTime;
-  uniform vec2 uWind;      // 风场（屏宽量级）
-  uniform vec3 uMul;
-  uniform vec3 uAdd;
-  uniform float uStars;
-
+  uniform vec2 uWind;
+  uniform vec3 uTint;
   varying vec2 vUv;
-
-  float hash(vec2 p) {
-    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
-  }
-
   void main() {
-    // 草浪：图像上沿 0~35% 区域做水平采样偏移（越靠上摆幅越大）
-    float band = smoothstep(0.42, 0.0, vUv.y);
-    float sway = sin(uTime * 1.6 + vUv.y * 22.0 + vUv.x * 9.0)
-               + 0.5 * sin(uTime * 0.7 + vUv.x * 14.0);
-    vec2 uv = vUv * uUvScale + uUvOffset;
-    uv.x += band * sway * uWind.x * 0.012;
-
-    vec3 color = texture2D(uMap, uv).rgb;
-
-    // 昼夜调色
-    color = color * uMul + uAdd;
-
-    // 星野：上半区、按亮度掩码叠加程序化星点
-    if (uStars > 0.01) {
-      vec2 grid = floor(vUv * vec2(160.0, 90.0));
-      float star = hash(grid);
-      float twinkle = 0.6 + 0.4 * sin(uTime * 2.0 + star * 40.0);
-      float isStar = step(0.995, star);
-      float skyMask = smoothstep(0.35, 0.75, vUv.y);
-      vec3 starColor = vec3(0.9, 0.92, 1.0) * twinkle;
-      color = mix(color, starColor, isStar * skyMask * uStars * 0.9);
-    }
-
-    gl_FragColor = vec4(color, 1.0);
+    vec2 canvasUv = vUv * uCover + vec2((1.0 - uCover.x) * 0.5, 0.0);
+    vec2 sampleUv = (canvasUv - 0.5 - uShift) / uScale + 0.5;
+    float anchor = smoothstep(uRootTip.x, uRootTip.y, sampleUv.y);
+    float edge = smoothstep(0.0, 0.025, sampleUv.x) * (1.0 - smoothstep(0.975, 1.0, sampleUv.x));
+    float wave = 0.55 + 0.3 * sin(uTime * uWave.y + sampleUv.x * 19.0 + uWave.z)
+                       + 0.15 * sin(uTime * uWave.y * 0.53 + sampleUv.y * 23.0 + uWave.z);
+    sampleUv -= uWind * vec2(1.0, 0.25) * uWave.x * anchor * edge * wave;
+    if (any(lessThan(sampleUv, vec2(0.0))) || any(greaterThan(sampleUv, vec2(1.0)))) discard;
+    vec4 flower = texture2D(uMap, sampleUv);
+    if (flower.a < 0.004) discard;
+    gl_FragColor = vec4(flower.rgb * uTint, flower.a);
   }
 `
 
-export class Backdrop {
-  readonly mesh: THREE.Mesh
+export class FlowerLayer {
+  readonly mesh: THREE.Mesh<THREE.PlaneGeometry, THREE.ShaderMaterial>
 
-  constructor(texture: THREE.Texture) {
+  constructor(readonly config: FlowerLayerConfig, private texture: THREE.Texture) {
     texture.colorSpace = THREE.SRGBColorSpace
+    texture.anisotropy = 4
     const material = new THREE.ShaderMaterial({
-      vertexShader: BACKDROP_VERT,
-      fragmentShader: BACKDROP_FRAG,
+      vertexShader: VERTEX,
+      fragmentShader: FRAGMENT,
       uniforms: {
-        uMap: { value: texture },
-        uUvScale: { value: new THREE.Vector2(1, 1) },
-        uUvOffset: { value: new THREE.Vector2(0, 0) },
-        uTime: { value: 0 },
-        uWind: { value: new THREE.Vector2(-1, 0) },
-        uMul: { value: new THREE.Color(1, 1, 1) },
-        uAdd: { value: new THREE.Color(0, 0, 0) },
-        uStars: { value: 0 },
+        uMap: { value: texture }, uCover: { value: new THREE.Vector2(1, 1) },
+        uShift: { value: new THREE.Vector2(config.shift[0], -config.shift[1]) },
+        uScale: { value: config.scale }, uRootTip: { value: new THREE.Vector2(config.root, config.tip) },
+        uWave: { value: new THREE.Vector3(config.amplitude, config.frequency, config.phase) },
+        uTime: { value: 0 }, uWind: { value: new THREE.Vector2() }, uTint: { value: new THREE.Color('white') },
       },
-      depthWrite: false,
-      depthTest: false,
+      transparent: true, depthWrite: false, depthTest: false, toneMapped: false,
     })
-    // 宽高比例由 setAspect 计算 cover
-    this.mesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), material)
+    this.mesh = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material)
+    this.mesh.name = `flowers-${config.name}`
+    this.mesh.renderOrder = FLOWER_LAYERS.indexOf(config)
     this.mesh.frustumCulled = false
-    this.mesh.renderOrder = -10
   }
 
-  /** 视口宽高比变化时重设 cover 铺图与面片尺寸（planeHeight = 覆盖视锥的高度） */
-  setAspect(aspect: number, planeHeight: number, imageAspect: number) {
-    const material = this.mesh.material as THREE.ShaderMaterial
-    // cover：比较视口与图片宽高比
-    const scale = new THREE.Vector2(1, 1)
-    const offset = new THREE.Vector2(0, 0)
-    if (aspect > imageAspect) {
-      scale.y = imageAspect / aspect
-      offset.y = (1 - scale.y) / 2
-    } else {
-      scale.x = aspect / imageAspect
-      offset.x = (1 - scale.x) / 2
-    }
-    material.uniforms.uUvScale.value.copy(scale)
-    material.uniforms.uUvOffset.value.copy(offset)
-    this.mesh.scale.set(planeHeight * aspect, planeHeight, 1)
+  resize(aspect: number) {
+    const imageAspect = FLOWER_CANVAS.width / FLOWER_CANVAS.height
+    const cover = this.mesh.material.uniforms.uCover.value as THREE.Vector2
+    cover.set(Math.min(1, aspect / imageAspect), Math.min(1, imageAspect / aspect))
+    this.mesh.scale.x = aspect
   }
 
-  update(time: number, windX: number, windY: number, mul: THREE.Color, add: THREE.Color, stars: number) {
-    const material = this.mesh.material as THREE.ShaderMaterial
-    material.uniforms.uTime.value = time
-    material.uniforms.uWind.value.set(windX, windY)
-    material.uniforms.uMul.value.copy(mul)
-    material.uniforms.uAdd.value.copy(add)
-    material.uniforms.uStars.value = stars
+  update(time: number, wind: WindField, theme: ThemeSnapshot, moving: boolean) {
+    const uniforms = this.mesh.material.uniforms
+    const sample = moving ? wind.sample(0.6, 0.25) : { x: 0, y: 0 }
+    uniforms.uTime.value = time
+    uniforms.uWind.value.set(THREE.MathUtils.clamp(sample.x, -1.2, 1.2), THREE.MathUtils.clamp(sample.y, -0.3, 0.3))
+    uniforms.uTint.value.copy(theme.colors.flowers)
   }
+
+  dispose() {
+    this.mesh.removeFromParent()
+    this.mesh.geometry.dispose()
+    this.mesh.material.dispose()
+    this.texture.dispose()
+  }
+}
+
+export async function loadFlower(config: FlowerLayerConfig, signal: AbortSignal) {
+  const url = `${import.meta.env.BASE_URL}assets/scene/${config.name}.png`
+  const texture = await waitForResource(new THREE.TextureLoader().loadAsync(url), signal, value => value.dispose())
+  const image = texture.image as HTMLImageElement
+  if (image.width !== FLOWER_CANVAS.width || image.height !== FLOWER_CANVAS.height) {
+    texture.dispose()
+    throw new Error(`${config.name}.png 必须保留 3840 × 2160 原始画布`)
+  }
+  return new FlowerLayer(config, texture)
 }

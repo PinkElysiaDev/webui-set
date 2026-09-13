@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useSceneTheme } from '../app/theme'
 
 /**
  * 混沌轨道粒子按钮：每颗粒子独立双频谐和轨道（准周期、不重复、可交叉），
@@ -62,11 +63,14 @@ export function ParticleButton({
 }) {
   const [orbits] = useState(makeOrbits)
   const [hovered, setHovered] = useState(false)
+  const [focused, setFocused] = useState(false)
+  const { reducedMotion } = useSceneTheme()
+  const active = (hovered || focused) && !loading
   const layerRef = useRef<HTMLDivElement>(null)
   const timeRef = useRef(0)
 
   useEffect(() => {
-    if (!hovered) return
+    if (!active || reducedMotion) return
     timeRef.current = 0 // sin(0)=0：每次悬停从原位起跳
     let last = performance.now()
     let raf = 0
@@ -87,13 +91,15 @@ export function ParticleButton({
     }
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
-  }, [hovered, orbits])
+  }, [active, reducedMotion, orbits])
 
   return (
     <div
       className="particle-zone"
       onPointerEnter={() => setHovered(true)}
       onPointerLeave={() => setHovered(false)}
+      onFocus={() => setFocused(true)}
+      onBlur={() => setFocused(false)}
     >
       <div ref={layerRef} className="particles" aria-hidden>
         {orbits.map((particle, index) => (
@@ -104,9 +110,9 @@ export function ParticleButton({
               top: particle.top,
               width: particle.size,
               height: particle.size,
-              background: particle.tint ? '#f9a8c9' : 'var(--primary)',
-              opacity: hovered ? 0.8 : 0,
-              transitionDelay: hovered ? `${particle.delay}ms` : '0ms',
+              background: particle.tint ? 'var(--particle-tint)' : 'var(--primary)',
+              opacity: active ? 0.8 : 0,
+              transitionDelay: active && !reducedMotion ? `${particle.delay}ms` : '0ms',
             }}
           />
         ))}

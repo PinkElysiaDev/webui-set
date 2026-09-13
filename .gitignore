@@ -5,3 +5,4 @@ dist/
 # 放置方法见 scripts/fetch-assets.md
 public/assets/model/
 public/assets/backdrop.png
+public/assets/scene/
