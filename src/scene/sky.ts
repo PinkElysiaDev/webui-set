@@ -33,7 +33,7 @@ export class Sky {
         vec2 grid = floor(vUv * vec2(160.0, 90.0));
         float star = hash(grid);
         float twinkle = 0.6 + 0.4 * sin(uTime * 2.0 + star * 40.0);
-        float isStar = step(0.995, star);
+        float isStar = step(0.998, star);
         float skyMask = smoothstep(0.35, 0.75, vUv.y);
         vec3 starColor = vec3(0.9, 0.92, 1.0) * twinkle;
         color = mix(color, starColor, isStar * skyMask * uNight * 0.9);
