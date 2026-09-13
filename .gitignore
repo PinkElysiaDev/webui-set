@@ -1,0 +1,7 @@
+node_modules/
+dist/
+
+# 模型与场景资产受 使用规则.txt 约束（禁止二次配布），不入库；
+# 放置方法见 scripts/fetch-assets.md
+public/assets/model/
+public/assets/backdrop.png
