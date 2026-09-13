@@ -133,6 +133,12 @@ export class StarField {
     return x > -this.aspect - margin && x < this.aspect + margin && y > -1 - margin && y < 1 + margin
   }
 
+  /** 屏幕外但贴近边缘的窄带（保证生成的星很快驶入视野） */
+  private nearScreen(x: number, y: number): boolean {
+    const margin = 0.7
+    return x > -this.aspect - margin && x < this.aspect + margin && y > -1 - margin && y < 1 + margin
+  }
+
   update(delta: number, night: number) {
     this.time += delta
     // 生成率准周期起伏：约 0.06 ~ 0.28 颗/秒，稀疏、时多时少
@@ -160,13 +166,13 @@ export class StarField {
         this.alphas[i] = star.alpha
       } else if (spawnBudget > 0 && Math.random() < spawnBudget) {
         spawnBudget -= 1
-        // 只在屏幕外的轨道位置生成，随轨道缓缓驶入视野
-        for (let attempt = 0; attempt < 8; attempt += 1) {
+        // 只在屏幕边缘外侧的窄带生成，随轨道缓缓驶入视野
+        for (let attempt = 0; attempt < 10; attempt += 1) {
           const radius = 1.2 + Math.random() * 1.6
           const angle = Math.random() * Math.PI * 2
           const x = this.pole.x + Math.cos(angle) * radius
           const y = this.pole.y + Math.sin(angle) * radius
-          if (this.inside(x, y)) continue
+          if (this.inside(x, y) || !this.nearScreen(x, y)) continue
           star.active = true
           star.entered = false
           star.radius = radius
