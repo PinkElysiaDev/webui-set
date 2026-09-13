@@ -94,9 +94,10 @@ body {
   color: var(--ink-soft);
 }
 
-/* 下划线输入 */
+/* 下划线输入（顶部留白补偿已删除的标题行，维持卡片原尺寸） */
 .line-input {
   position: relative;
+  margin-top: 44px;
 }
 
 .line-input input {
