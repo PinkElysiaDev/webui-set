@@ -55,6 +55,7 @@ export class Sky {
 
 interface StarState {
   active: boolean
+  entered: boolean
   angle: number
   radius: number
   speed: number
@@ -63,9 +64,9 @@ interface StarState {
 
 /**
  * 星轨式方片星星：绕同一「天极」缓缓做圆弧运动（方向一致如长曝光星轨）。
- * 生成率随时间准周期起伏（时多时少）；只在屏内的轨道位置生成；一旦生成
- * 持续运动，出屏即回收。纯白方片、普通半透明混合（不发光），透明度
- * 逐星随机固定形成明暗不均；夜间随主题 blend 渐显。
+ * 生成率随时间准周期起伏（时多时少）；**从屏幕外生成、驶入视野，再次
+ * 离开屏幕即回收**。纯白方片、普通半透明混合（不发光），透明度逐星随机
+ * 固定形成明暗不均；夜间随主题 blend 渐显。
  */
 export class StarField {
   readonly points: THREE.Points<THREE.BufferGeometry, THREE.ShaderMaterial>
@@ -77,7 +78,7 @@ export class StarField {
   private pole = new THREE.Vector2(0.6, 0.4)
   private aspect = 1
 
-  constructor(private max = 56) {
+  constructor(private max = 14) {
     this.positions = new Float32Array(max * 3)
     this.alphas = new Float32Array(max)
     this.sizes = new Float32Array(max)
@@ -114,7 +115,7 @@ export class StarField {
     this.points.frustumCulled = false
     this.points.renderOrder = -9
     this.states = Array.from({ length: max }, () => ({
-      active: false, angle: 0, radius: 0, speed: 0, alpha: 0,
+      active: false, entered: false, angle: 0, radius: 0, speed: 0, alpha: 0,
     }))
     // 屏内停放休眠星（避免原点闪烁）
     this.positions.fill(0)
@@ -127,10 +128,15 @@ export class StarField {
     this.points.material.uniforms.uPixelRatio.value = pixelRatio
   }
 
+  private inside(x: number, y: number): boolean {
+    const margin = 0.05
+    return x > -this.aspect - margin && x < this.aspect + margin && y > -1 - margin && y < 1 + margin
+  }
+
   update(delta: number, night: number) {
     this.time += delta
-    // 生成率准周期起伏：约 0.35 ~ 1.8 颗/秒，时多时少
-    const richness = 0.35 + 1.45 * Math.abs(Math.sin(this.time * 0.07) * Math.sin(this.time * 0.031 + 1.7))
+    // 生成率准周期起伏：约 0.06 ~ 0.28 颗/秒，稀疏、时多时少
+    const richness = 0.06 + 0.22 * Math.abs(Math.sin(this.time * 0.07) * Math.sin(this.time * 0.031 + 1.7))
     let spawnBudget = richness * delta
     for (let i = 0; i < this.max; i += 1) {
       const star = this.states[i]
@@ -138,27 +144,31 @@ export class StarField {
         star.angle += star.speed * delta
         const x = this.pole.x + Math.cos(star.angle) * star.radius
         const y = this.pole.y + Math.sin(star.angle) * star.radius
-        if (x < -this.aspect - 0.05 || x > this.aspect + 0.05 || y < -1.05 || y > 1.05) {
-          // 运动到屏幕外：回收
+        const inside = this.inside(x, y)
+        if (inside) star.entered = true
+        else if (star.entered) {
+          // 驶入过视野后再次离开屏幕：回收
           star.active = false
+          star.entered = false
           this.alphas[i] = 0
           this.positions[i * 3 + 2] = -1
           this.sizes[i] = 0
-        } else {
-          this.positions[i * 3] = x
-          this.positions[i * 3 + 1] = y
-          this.alphas[i] = star.alpha
+          continue
         }
+        this.positions[i * 3] = x
+        this.positions[i * 3 + 1] = y
+        this.alphas[i] = star.alpha
       } else if (spawnBudget > 0 && Math.random() < spawnBudget) {
         spawnBudget -= 1
-        // 只在屏内的轨道位置生成
-        for (let attempt = 0; attempt < 6; attempt += 1) {
-          const radius = 0.55 + Math.random() * 0.95
+        // 只在屏幕外的轨道位置生成，随轨道缓缓驶入视野
+        for (let attempt = 0; attempt < 8; attempt += 1) {
+          const radius = 1.2 + Math.random() * 1.6
           const angle = Math.random() * Math.PI * 2
           const x = this.pole.x + Math.cos(angle) * radius
           const y = this.pole.y + Math.sin(angle) * radius
-          if (x < -this.aspect + 0.02 || x > this.aspect - 0.02 || y < -0.98 || y > 0.98) continue
+          if (this.inside(x, y)) continue
           star.active = true
+          star.entered = false
           star.radius = radius
           star.angle = angle
           star.speed = 0.006 + Math.random() * 0.014
@@ -167,7 +177,7 @@ export class StarField {
           this.positions[i * 3 + 1] = y
           this.positions[i * 3 + 2] = 0
           this.alphas[i] = star.alpha
-          this.sizes[i] = 10 + Math.random() * 12
+          this.sizes[i] = 18 + Math.random() * 20
           break
         }
       }
