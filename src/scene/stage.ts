@@ -6,7 +6,7 @@ import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js'
 import { FLOWER_LAYERS, loadFlower, type FlowerLayer } from './backdrop'
 import { DayNightController } from './daynight'
 import { PetalLayer } from './petals'
-import { Sky, StarField } from './sky'
+import { Sky } from './sky'
 import { WindField } from './windfield'
 import { errorMessage, initialSceneStatus, type ResourceName, type ResourceStatus, type SceneStatus } from './resources'
 
@@ -25,7 +25,6 @@ export class Stage {
   private composer: EffectComposer
   private bloom: UnrealBloomPass
   private sky = new Sky()
-  private stars = new StarField()
   private petals: PetalLayer
   private flowers = new Map<string, FlowerLayer>()
   private abort = new AbortController()
@@ -56,7 +55,6 @@ export class Stage {
     this.renderer.domElement.setAttribute('aria-hidden', 'true')
     this.screenCamera.position.z = 2
     this.background.add(this.sky.mesh)
-    this.background.add(this.stars.points)
     this.petals = new PetalLayer(container.clientWidth < 768 ? 48 : 110)
     this.foreground.add(this.petals.mesh)
 
@@ -139,7 +137,6 @@ export class Stage {
     this.screenCamera.right = aspect
     this.screenCamera.updateProjectionMatrix()
     this.sky.resize(aspect)
-    this.stars.resize(aspect, this.renderer.getPixelRatio())
     this.flowers.forEach(layer => layer.resize(aspect))
     this.requestFrame()
   }
@@ -170,7 +167,6 @@ export class Stage {
     const theme = this.options.theme.snapshot
     this.bloom.strength = theme.bloom
     this.sky.update(this.elapsed, theme)
-    this.stars.update(motionDelta, theme.blend)
     this.flowers.forEach(layer => layer.update(this.elapsed, this.wind, theme, moving))
     this.petals.update(motionDelta, this.elapsed, this.wind, this.aspect, theme, this.lowQuality)
     this.renderer.info.reset()
@@ -228,7 +224,6 @@ export class Stage {
     this.renderer.domElement.removeEventListener('webglcontextlost', this.onContextLost)
     this.flowers.forEach(layer => layer.dispose())
     this.sky.dispose()
-    this.stars.dispose()
     this.petals.dispose()
     this.composer.passes.forEach(pass => pass.dispose())
     this.composer.dispose()

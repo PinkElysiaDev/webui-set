@@ -39,6 +39,8 @@ const FRAGMENT = `
   uniform vec3 uWave;
   uniform float uTime;
   uniform vec2 uWind;
+  uniform vec2 uPointer;
+  uniform vec2 uWake;
   uniform vec3 uTint;
   varying vec2 vUv;
   void main() {
@@ -48,7 +50,11 @@ const FRAGMENT = `
     float edge = smoothstep(0.0, 0.025, sampleUv.x) * (1.0 - smoothstep(0.975, 1.0, sampleUv.x));
     float wave = 0.55 + 0.3 * sin(uTime * uWave.y + sampleUv.x * 19.0 + uWave.z)
                        + 0.15 * sin(uTime * uWave.y * 0.53 + sampleUv.y * 23.0 + uWave.z);
-    sampleUv -= uWind * vec2(1.0, 0.25) * uWave.x * anchor * edge * wave;
+    // 气流冲击为局部涟漪：按片元到指针的高斯距离衰减（欠阻尼弹簧响应）
+    vec2 toPointer = vUv - uPointer;
+    float influence = exp(-dot(toPointer, toPointer) * 24.0);
+    vec2 wind = uWind + uWake * influence;
+    sampleUv -= wind * vec2(1.0, 0.25) * uWave.x * anchor * edge * wave;
     if (any(lessThan(sampleUv, vec2(0.0))) || any(greaterThan(sampleUv, vec2(1.0)))) discard;
     vec4 flower = texture2D(uMap, sampleUv);
     if (flower.a < 0.004) discard;
@@ -70,7 +76,9 @@ export class FlowerLayer {
         uShift: { value: new THREE.Vector2(config.shift[0], -config.shift[1]) },
         uScale: { value: config.scale }, uRootTip: { value: new THREE.Vector2(config.root, config.tip) },
         uWave: { value: new THREE.Vector3(config.amplitude, config.frequency, config.phase) },
-        uTime: { value: 0 }, uWind: { value: new THREE.Vector2() }, uTint: { value: new THREE.Color('white') },
+        uTime: { value: 0 }, uWind: { value: new THREE.Vector2() },
+        uPointer: { value: new THREE.Vector2(0.5, 0.5) }, uWake: { value: new THREE.Vector2() },
+        uTint: { value: new THREE.Color('white') },
       },
       transparent: true, depthWrite: false, depthTest: false, toneMapped: false,
     })
@@ -89,9 +97,12 @@ export class FlowerLayer {
 
   update(time: number, wind: WindField, theme: ThemeSnapshot, moving: boolean) {
     const uniforms = this.mesh.material.uniforms
-    const sample = moving ? wind.sample(0.6, 0.25) : { x: 0, y: 0 }
+    // 整层只取纯环境风；气流冲击走片元级局部涟漪（uPointer + uWake）
+    const ambient = moving ? wind.ambient() : { x: 0, y: 0 }
     uniforms.uTime.value = time
-    uniforms.uWind.value.set(THREE.MathUtils.clamp(sample.x, -1.2, 1.2), THREE.MathUtils.clamp(sample.y, -0.3, 0.3))
+    uniforms.uWind.value.set(THREE.MathUtils.clamp(ambient.x, -1.2, 1.2), THREE.MathUtils.clamp(ambient.y, -0.3, 0.3))
+    uniforms.uPointer.value.set(wind.pointer.x, wind.pointer.y)
+    uniforms.uWake.value.set(wind.wake.x, wind.wake.y)
     uniforms.uTint.value.copy(theme.colors.flowers)
   }
 
