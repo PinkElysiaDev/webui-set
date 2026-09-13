@@ -161,13 +161,13 @@ export class StarField {
           star.active = true
           star.radius = radius
           star.angle = angle
-          star.speed = 0.015 + Math.random() * 0.035
+          star.speed = 0.006 + Math.random() * 0.014
           star.alpha = 0.2 + Math.random() * 0.55
           this.positions[i * 3] = x
           this.positions[i * 3 + 1] = y
           this.positions[i * 3 + 2] = 0
           this.alphas[i] = star.alpha
-          this.sizes[i] = 3 + Math.random() * 6
+          this.sizes[i] = 10 + Math.random() * 12
           break
         }
       }
