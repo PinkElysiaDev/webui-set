@@ -70,7 +70,6 @@ export function LoginPage() {
       <div className="login-layer">
         <form className="login-card" onSubmit={handleSubmit}>
           <div className="brand"><b>Elysia API</b><span>Console</span></div>
-          <h1 className="title">Panel Access Token</h1>
           <TokenLineInput value={value} onChange={next => { setValue(next); setError(null) }} />
           {error && <div className="error-tip" role="alert">{error}</div>}
           <ParticleButton loading={loading}>

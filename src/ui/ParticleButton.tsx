@@ -4,17 +4,27 @@ import { useSceneTheme } from '../app/theme'
 /**
  * 混沌轨道粒子按钮：每颗粒子独立双频谐和轨道（准周期、不重复、可交叉），
  * 悬停时从原位起跳并沿轨道游走，离开齐灭。轨道参数挂载时随机一次。
+ *
+ * 去同步起步：每轴的两项谐波随机取 sin（t=0 零位移、初速 sign×ωa）或
+ * 偏移 cos（t=0 零位移零速度、随机符号加速度），type/sign/amp/ω 全随机
+ * ——触发瞬间各粒子的方向、速度、加速度即各不相同，无齐射阶段。
  */
+interface HarmonicTerm {
+  /** 0: sin(ωt)；1: cos(ωt) − 1（两项在 t=0 位移均为零） */
+  type: 0 | 1
+  sign: 1 | -1
+  omega: number
+  amp: number
+}
+
 interface OrbitParticle {
   left: string
   top: string
   size: number
   delay: number
   tint: boolean
-  wx: [number, number]
-  wy: [number, number]
-  ax: [number, number]
-  ay: [number, number]
+  tx: [HarmonicTerm, HarmonicTerm]
+  ty: [HarmonicTerm, HarmonicTerm]
 }
 
 const HOMES: { left: string; top: string; size: number; delay: number; tint?: boolean }[] = [
@@ -40,18 +50,27 @@ function makeOrbits(): OrbitParticle[] {
     while (value === exclude) value = OMEGAS[Math.floor(Math.random() * OMEGAS.length)]
     return value
   }
+  const makeTerm = (exclude?: number): HarmonicTerm => ({
+    type: Math.random() < 0.5 ? 0 : 1,
+    sign: Math.random() < 0.5 ? 1 : -1,
+    omega: pick(exclude),
+    amp: 4 + Math.random() * 9,
+  })
   return HOMES.map((home) => {
-    const wx1 = pick()
-    const wy1 = pick()
+    const tx1 = makeTerm()
+    const ty1 = makeTerm()
     return {
       ...home,
       tint: home.tint ?? false,
-      wx: [wx1, pick(wx1)],
-      wy: [wy1, pick(wy1)],
-      ax: [9 + Math.random() * 9, 4 + Math.random() * 5],
-      ay: [13 + Math.random() * 13, 5 + Math.random() * 6],
+      tx: [tx1, makeTerm(tx1.omega)],
+      ty: [ty1, makeTerm(ty1.omega)],
     }
   })
+}
+
+function termAt(term: HarmonicTerm, t: number): number {
+  const phase = term.type === 0 ? Math.sin(term.omega * t) : Math.cos(term.omega * t) - 1
+  return term.sign * term.amp * phase
 }
 
 export function ParticleButton({
@@ -71,7 +90,7 @@ export function ParticleButton({
 
   useEffect(() => {
     if (!active || reducedMotion) return
-    timeRef.current = 0 // sin(0)=0：每次悬停从原位起跳
+    timeRef.current = 0 // 所有项在 t=0 位移为零：每次悬停从原位起跳
     let last = performance.now()
     let raf = 0
     const tick = (now: number) => {
@@ -82,8 +101,8 @@ export function ParticleButton({
       if (dots) {
         for (let i = 0; i < dots.length; i += 1) {
           const o = orbits[i]
-          const x = Math.sin(o.wx[0] * t) * o.ax[0] + Math.sin(o.wx[1] * t) * o.ax[1]
-          const y = Math.sin(o.wy[0] * t) * o.ay[0] + Math.sin(o.wy[1] * t) * o.ay[1]
+          const x = termAt(o.tx[0], t) + termAt(o.tx[1], t)
+          const y = termAt(o.ty[0], t) + termAt(o.ty[1], t)
           ;(dots[i] as HTMLElement).style.transform = `translate(${x.toFixed(2)}px, ${y.toFixed(2)}px)`
         }
       }
