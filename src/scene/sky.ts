@@ -28,12 +28,15 @@ export class Sky {
       }
       void main() {
         vec3 color = mix(uHorizon, uTop, smoothstep(0.28, 1.0, vUv.y));
-        // 旧版格点方片星野：整格方形白色片 + 闪烁，夜间在上半屏淡入
-        vec2 grid = vUv * vec2(100.0 * uAspect, 100.0);
-        float random = hash(floor(grid));
-        float star = step(0.993, random);
-        float twinkle = 0.78 + 0.22 * sin(uTime * 0.7 + random * 73.0);
-        color += vec3(1.5, 1.45, 1.8) * star * twinkle * uNight * smoothstep(0.3, 0.65, vUv.y);
+        // 首版（bbc2fc3）的格点方片星野：160×90 格、0.995 阈值、快闪、
+        // 非 HDR 白蓝 mix（不触发 Bloom），上半屏淡入
+        vec2 grid = floor(vUv * vec2(160.0, 90.0));
+        float star = hash(grid);
+        float twinkle = 0.6 + 0.4 * sin(uTime * 2.0 + star * 40.0);
+        float isStar = step(0.995, star);
+        float skyMask = smoothstep(0.35, 0.75, vUv.y);
+        vec3 starColor = vec3(0.9, 0.92, 1.0) * twinkle;
+        color = mix(color, starColor, isStar * skyMask * uNight * 0.9);
         gl_FragColor = vec4(color, 1.0);
       }
     `,
