@@ -13,4 +13,6 @@ public/assets/scene/
 
 放置后 `npm run dev` 即可。
 
-> 注：MMD 角色相关（模型加载 / ammo 物理 / 版权页脚）已移除，无需放置模型资产。
+> 注：发行压缩包（login-demo.zip）已自带 `public/assets/scene/` 三张花海图，
+> 解压即用；本说明仅供从 git 仓库克隆时手动补图。花海图为自行生成素材，
+> 不受已移除的 MMD 模型使用条款约束。
