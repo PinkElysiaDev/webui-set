@@ -1,8 +1,10 @@
 name: Deploy to GitHub Pages
 
+# 双版本部署：main（新版）在站点根，legacy（旧版）在 /legacy/ 子路径。
+# main 或 legacy 任一分支推送都会触发整站重建，两版本始终同时在线。
 on:
   push:
-    branches: [main]
+    branches: [main, legacy]
   workflow_dispatch:
 
 permissions:
@@ -19,15 +21,38 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: main
+          path: main
+      - uses: actions/checkout@v4
+        with:
+          ref: legacy
+          path: legacy
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
-      - run: npm ci
-      - run: npm run build
+          cache-dependency-path: |
+            main/package-lock.json
+            legacy/package-lock.json
+      - name: Build main (root)
+        working-directory: main
+        run: |
+          npm ci
+          npm run build
+      - name: Build legacy (/legacy/)
+        working-directory: legacy
+        run: |
+          npm ci
+          npm run build
+      - name: Assemble site
+        run: |
+          mkdir -p site/legacy
+          cp -r main/dist/* site/
+          cp -r legacy/dist/* site/legacy/
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: dist
+          path: site
   deploy:
     needs: build
     runs-on: ubuntu-latest
