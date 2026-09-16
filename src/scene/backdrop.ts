@@ -44,6 +44,7 @@ const FRAGMENT = `
   uniform vec2 uPointer;
   uniform vec2 uWake;
   uniform vec3 uTint;
+  uniform float uReveal;
   varying vec2 vUv;
   void main() {
     vec2 canvasUv = vUv * uCover + vec2((1.0 - uCover.x) * 0.5, 0.0);
@@ -59,7 +60,7 @@ const FRAGMENT = `
     if (any(lessThan(sampleUv, vec2(0.0))) || any(greaterThan(sampleUv, vec2(1.0)))) discard;
     vec4 flower = texture2D(uMap, sampleUv);
     if (flower.a < 0.004) discard;
-    gl_FragColor = vec4(flower.rgb * uTint, flower.a);
+    gl_FragColor = vec4(flower.rgb * uTint, flower.a * uReveal);
   }
 `
 
@@ -80,6 +81,7 @@ export class FlowerLayer {
         uTime: { value: 0 }, uWind: { value: new THREE.Vector2() },
         uPointer: { value: new THREE.Vector2(0.5, 0.5) }, uWake: { value: new THREE.Vector2() },
         uTint: { value: new THREE.Color('white') },
+        uReveal: { value: 0 },
       },
       transparent: true, depthWrite: false, depthTest: false, toneMapped: false,
     })
@@ -134,6 +136,14 @@ export class FlowerLayer {
     const cover = this.mesh.material.uniforms.uCover.value as THREE.Vector2
     cover.set(Math.min(1, aspect / imageAspect), Math.min(1, imageAspect / aspect))
     this.mesh.scale.x = aspect
+  }
+
+  setReveal(value: number) {
+    this.mesh.material.uniforms.uReveal.value = value
+  }
+
+  get reveal() {
+    return this.mesh.material.uniforms.uReveal.value as number
   }
 
   update(time: number, wind: WindField, theme: ThemeSnapshot, moving: boolean) {

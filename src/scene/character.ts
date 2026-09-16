@@ -42,11 +42,12 @@ const VERTEX = `
 const FRAGMENT = `
   uniform sampler2D uMap;
   uniform vec3 uTint;
+  uniform float uReveal;
   varying vec2 vUv;
   void main() {
     vec4 pigment = texture2D(uMap, vUv);
     if (pigment.a < 0.004) discard;
-    gl_FragColor = vec4(pigment.rgb * uTint, pigment.a);
+    gl_FragColor = vec4(pigment.rgb * uTint, pigment.a * uReveal);
   }
 `
 
@@ -76,6 +77,7 @@ export class CharacterRig {
           uniforms: {
             uMap: { value: texture }, uTint: { value: new THREE.Color('white') },
             uTime: { value: 0 }, uWind: { value: new THREE.Vector2() },
+            uReveal: { value: 0 },
             uAmplitude: { value: spec.amplitude }, uFrequency: { value: spec.frequency }, uPhase: { value: spec.phase },
           },
         })
@@ -109,6 +111,10 @@ export class CharacterRig {
   get requirements() { return this.manifest.occlusion }
   get coverageSatisfied() { return this.occlusion?.satisfied ?? false }
   get hiddenReason() { return this.occlusion?.reason ?? '正在计算花层覆盖' }
+
+  setReveal(value: number) {
+    for (const { mesh } of this.layers) mesh.material.uniforms.uReveal.value = value
+  }
 
   setVisible(visible: boolean) {
     this.requestedVisible = visible
