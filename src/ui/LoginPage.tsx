@@ -9,6 +9,7 @@ import { TokenLineInput } from './TokenLineInput'
 
 export function LoginPage() {
   const mountRef = useRef<HTMLDivElement>(null)
+  const cardRef = useRef<HTMLFormElement>(null)
   const stageRef = useRef<Stage | null>(null)
   const haloRef = useRef<HTMLDivElement>(null)
   const timersRef = useRef<number[]>([])
@@ -23,11 +24,12 @@ export function LoginPage() {
     if (!mountRef.current) return
     setStatus(initialSceneStatus())
     try {
-      stageRef.current = new Stage(mountRef.current, { reducedMotion, theme: controller, onStatus: setStatus })
+      stageRef.current = new Stage(mountRef.current, { reducedMotion, theme: controller, card: cardRef.current, onStatus: setStatus })
     } catch (failure) {
       setStatus({
         renderer: { state: 'error', message: `无法启动图形场景：${errorMessage(failure)}`, retryable: true },
         flowers: { state: 'degraded', message: '保留天空背景' },
+        character: { state: 'degraded', message: '角色场景未启用，登录仍可用' },
       })
     }
     return () => {
@@ -68,7 +70,7 @@ export function LoginPage() {
     <div className="login-page">
       <div ref={mountRef} className="stage-root" />
       <div className="login-layer">
-        <form className="login-card" onSubmit={handleSubmit}>
+        <form ref={cardRef} className="login-card" onSubmit={handleSubmit}>
           <div className="brand"><b>Elysia API</b><span>Console</span></div>
           <TokenLineInput value={value} onChange={next => { setValue(next); setError(null) }} />
           {error && <div className="error-tip" role="alert">{error}</div>}
@@ -80,7 +82,7 @@ export function LoginPage() {
       <SealToggle night={mode === 'night'} onToggle={toggleMode} />
       <div ref={haloRef} className="halo" aria-hidden />
       <details className={`scene-status ${retryable ? 'has-error' : ''}`} open={pending || retryable}>
-        <summary aria-live="polite">{pending ? '场景加载中 · 登录可用' : complete ? '花海已就绪' : retryable ? '场景部分可用 · 查看详情' : '静态场景已就绪'}</summary>
+        <summary aria-live="polite">{pending ? '场景加载中 · 登录可用' : complete ? '花海与爱莉希雅已就绪' : '场景部分可用 · 查看详情'}</summary>
         <ul>
           {resources.map(([name, resource]) => <li key={name} data-state={resource.state}>{resource.message}</li>)}
         </ul>

@@ -43,7 +43,7 @@ export class PetalLayer {
     this.mesh = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1), material, count)
     this.mesh.name = 'petals'
     this.mesh.frustumCulled = false
-    this.mesh.renderOrder = 10
+    this.mesh.renderOrder = 50
     this.mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage)
     this.states = Array.from({ length: count }, () => ({
       horizontal: Math.random(), vertical: Math.random(), rotation: Math.random() * Math.PI * 2,

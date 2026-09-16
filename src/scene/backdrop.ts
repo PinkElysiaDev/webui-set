@@ -2,6 +2,8 @@ import * as THREE from 'three'
 import type { ThemeSnapshot } from './daynight'
 import type { WindField } from './windfield'
 import { waitForResource } from './resources'
+import { AlphaPyramid } from './coverage'
+import type { Rect } from './character-manifest'
 
 export interface FlowerLayerConfig {
   name: 'far' | 'mid' | 'front'
@@ -50,7 +52,6 @@ const FRAGMENT = `
     float edge = smoothstep(0.0, 0.025, sampleUv.x) * (1.0 - smoothstep(0.975, 1.0, sampleUv.x));
     float wave = 0.55 + 0.3 * sin(uTime * uWave.y + sampleUv.x * 19.0 + uWave.z)
                        + 0.15 * sin(uTime * uWave.y * 0.53 + sampleUv.y * 23.0 + uWave.z);
-    // 气流冲击为局部涟漪：按片元到指针的高斯距离衰减（欠阻尼弹簧响应）
     vec2 toPointer = vUv - uPointer;
     float influence = exp(-dot(toPointer, toPointer) * 24.0);
     vec2 wind = uWind + uWake * influence;
@@ -64,13 +65,13 @@ const FRAGMENT = `
 
 export class FlowerLayer {
   readonly mesh: THREE.Mesh<THREE.PlaneGeometry, THREE.ShaderMaterial>
+  private alpha: AlphaPyramid | null = null
 
   constructor(readonly config: FlowerLayerConfig, private texture: THREE.Texture) {
     texture.colorSpace = THREE.SRGBColorSpace
     texture.anisotropy = 4
     const material = new THREE.ShaderMaterial({
-      vertexShader: VERTEX,
-      fragmentShader: FRAGMENT,
+      vertexShader: VERTEX, fragmentShader: FRAGMENT,
       uniforms: {
         uMap: { value: texture }, uCover: { value: new THREE.Vector2(1, 1) },
         uShift: { value: new THREE.Vector2(config.shift[0], -config.shift[1]) },
@@ -84,8 +85,48 @@ export class FlowerLayer {
     })
     this.mesh = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material)
     this.mesh.name = `flowers-${config.name}`
-    this.mesh.renderOrder = FLOWER_LAYERS.indexOf(config)
+    this.mesh.renderOrder = config.name === 'front' ? 40 : config.name === 'mid' ? 10 : 0
     this.mesh.frustumCulled = false
+    if (config.name !== 'far') this.readAlpha(texture.image as HTMLImageElement)
+  }
+
+  private readAlpha(image: HTMLImageElement) {
+    const canvas = document.createElement('canvas')
+    canvas.width = image.width
+    canvas.height = image.height
+    const context = canvas.getContext('2d', { willReadFrequently: true })
+    if (!context) return
+    context.drawImage(image, 0, 0, canvas.width, canvas.height)
+    const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data
+    const alpha = new Uint8Array(canvas.width * canvas.height)
+    for (let index = 0; index < alpha.length; index += 1) alpha[index] = pixels[index * 4 + 3]
+    this.alpha = new AlphaPyramid(canvas.width, canvas.height, alpha)
+    canvas.width = 0
+    canvas.height = 0
+  }
+
+  alphaIn(rect: Rect, width: number, height: number, safety: number, mode: 'minimum' | 'maximum') {
+    if (!this.alpha || !this.mesh.visible) return 0
+    const aspect = width / height
+    const imageAspect = FLOWER_CANVAS.width / FLOWER_CANVAS.height
+    const coverHorizontal = Math.min(1, aspect / imageAspect)
+    const coverVertical = Math.min(1, imageAspect / aspect)
+    const horizontal = (screen: number) => (screen / width * coverHorizontal + (1 - coverHorizontal) * 0.5 - 0.5 - this.config.shift[0]) / this.config.scale + 0.5
+    const vertical = (screen: number) => ((1 - screen / height) * coverVertical - 0.5 + this.config.shift[1]) / this.config.scale + 0.5
+    const upper = vertical(rect[1] - safety)
+    const lower = vertical(rect[1] + rect[3] + safety)
+    const anchor = THREE.MathUtils.smoothstep(upper, this.config.root, this.config.tip)
+    const driftHorizontal = this.config.amplitude * 2.4 * anchor
+    const driftVertical = this.config.amplitude * 0.375 * anchor
+    const filterHorizontal = Math.max(1, FLOWER_CANVAS.width * coverHorizontal / width / this.config.scale)
+    const filterVertical = Math.max(1, FLOWER_CANVAS.height * coverVertical / height / this.config.scale)
+    return this.alpha.range(
+      (horizontal(rect[0] - safety) - driftHorizontal) * FLOWER_CANVAS.width - filterHorizontal,
+      (1 - upper - driftVertical) * FLOWER_CANVAS.height - filterVertical,
+      (horizontal(rect[0] + rect[2] + safety) + driftHorizontal) * FLOWER_CANVAS.width + filterHorizontal,
+      (1 - lower + driftVertical) * FLOWER_CANVAS.height + filterVertical,
+      mode,
+    )
   }
 
   resize(aspect: number) {
@@ -97,16 +138,16 @@ export class FlowerLayer {
 
   update(time: number, wind: WindField, theme: ThemeSnapshot, moving: boolean) {
     const uniforms = this.mesh.material.uniforms
-    // 整层只取纯环境风；气流冲击走片元级局部涟漪（uPointer + uWake）
     const ambient = moving ? wind.ambient() : { x: 0, y: 0 }
     uniforms.uTime.value = time
     uniforms.uWind.value.set(THREE.MathUtils.clamp(ambient.x, -1.2, 1.2), THREE.MathUtils.clamp(ambient.y, -0.3, 0.3))
     uniforms.uPointer.value.set(wind.pointer.x, wind.pointer.y)
-    uniforms.uWake.value.set(wind.wake.x, wind.wake.y)
+    uniforms.uWake.value.set(moving ? wind.wake.x : 0, moving ? wind.wake.y : 0)
     uniforms.uTint.value.copy(theme.colors.flowers)
   }
 
   dispose() {
+    this.alpha = null
     this.mesh.removeFromParent()
     this.mesh.geometry.dispose()
     this.mesh.material.dispose()
