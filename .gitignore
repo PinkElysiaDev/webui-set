@@ -2,9 +2,10 @@ node_modules/
 dist/
 .asset-cache/
 .npm-cache/
+.gh-auth.log
+.vite.log
+debug.log
 
-# 大型素材及离线衍生图不入库；重建方法见 scripts/fetch-assets.md
+# MMD 原模型与旧单层背景不入库（禁二次配布；重建方法见 scripts/fetch-assets.md）
 public/assets/model/
 public/assets/backdrop.png
-public/assets/scene/
-public/assets/character/
