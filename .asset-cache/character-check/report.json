@@ -1,0 +1,51 @@
+{
+  "layers": 8,
+  "sources": [
+    "角色本身.png",
+    "后发发片.png",
+    "前发发片.png",
+    "头纱飘带.png",
+    "头纱本体.png"
+  ],
+  "connections": [
+    {
+      "id": "scalp",
+      "center": [
+        990,
+        132
+      ],
+      "radius": 28,
+      "layers": [
+        "back-hair",
+        "front-hair"
+      ],
+      "coverage": 0.9978280542986425
+    },
+    {
+      "id": "nape",
+      "center": [
+        993,
+        249
+      ],
+      "radius": 8,
+      "layers": [
+        "back-hair",
+        "body",
+        "body-front",
+        "front-hair"
+      ],
+      "coverage": 1
+    }
+  ],
+  "fallbackIdentical": true,
+  "regionRectangles": [
+    {
+      "id": "hand",
+      "count": 40
+    },
+    {
+      "id": "hem",
+      "count": 3
+    }
+  ]
+}

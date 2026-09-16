@@ -1,5 +1,5 @@
 export type ResourceState = 'loading' | 'ready' | 'degraded' | 'error'
-export type ResourceName = 'flowers' | 'renderer' | 'character'
+export type ResourceName = 'flowers' | 'renderer'
 
 export interface ResourceStatus {
   state: ResourceState
@@ -13,7 +13,6 @@ export function initialSceneStatus(): SceneStatus {
   return {
     renderer: { state: 'loading', message: '准备画布' },
     flowers: { state: 'loading', message: '加载三层花海' },
-    character: { state: 'loading', message: '拼接爱莉希雅与风动发片' },
   }
 }
 

@@ -6,6 +6,6 @@ dist/
 .vite.log
 debug.log
 
-# MMD 原模型与旧单层背景不入库（禁二次配布；重建方法见 scripts/fetch-assets.md）
+# MMD 原模型与旧单层背景不入库
 public/assets/model/
 public/assets/backdrop.png

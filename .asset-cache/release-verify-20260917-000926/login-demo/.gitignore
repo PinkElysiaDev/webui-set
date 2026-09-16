@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.asset-cache/
+.npm-cache/
+
+# 大型素材及离线衍生图不入库；重建方法见 scripts/fetch-assets.md
+public/assets/model/
+public/assets/backdrop.png
+public/assets/scene/
+public/assets/character/

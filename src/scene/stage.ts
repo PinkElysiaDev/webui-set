@@ -4,19 +4,15 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js'
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js'
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js'
 import { FLOWER_LAYERS, loadFlower, type FlowerLayer } from './backdrop'
-import { loadCharacter, type CharacterRig } from './character'
 import { DayNightController } from './daynight'
 import { PetalLayer } from './petals'
 import { Sky } from './sky'
 import { WindField } from './windfield'
-import { TouchEffect } from './touch-effect'
-import { FlowerCoverage } from './coverage'
 import { errorMessage, initialSceneStatus, type ResourceName, type ResourceStatus, type SceneStatus } from './resources'
 
 export interface StageOptions {
   reducedMotion: boolean
   theme: DayNightController
-  card: HTMLElement | null
   onStatus(status: SceneStatus): void
 }
 
@@ -31,13 +27,6 @@ export class Stage {
   private sky = new Sky()
   private petals: PetalLayer
   private flowers = new Map<string, FlowerLayer>()
-  private character: CharacterRig | null = null
-  private touch = new TouchEffect()
-  private loadingFlowers = false
-  private loadingCharacter = false
-  private characterVisible = true
-  private coverageCache: { key: string; field: FlowerCoverage } | null = null
-  private characterResourceStatus: ResourceStatus = { state: 'loading', message: '准备角色素材' }
   private abort = new AbortController()
   private status = initialSceneStatus()
   private unsubscribe: () => void
@@ -68,7 +57,6 @@ export class Stage {
     this.background.add(this.sky.mesh)
     this.petals = new PetalLayer(container.clientWidth < 768 ? 48 : 110)
     this.foreground.add(this.petals.mesh)
-    this.foreground.add(this.touch.group)
 
     this.composer = new EffectComposer(this.renderer)
     const backgroundPass = new RenderPass(this.background, this.screenCamera)
@@ -84,7 +72,6 @@ export class Stage {
     this.unsubscribe = options.theme.subscribe(this.requestFrame)
     this.resizeObserver = new ResizeObserver(this.resize)
     this.resizeObserver.observe(container)
-    if (options.card) this.resizeObserver.observe(options.card)
     this.resize()
     container.addEventListener('pointermove', this.onPointerMove)
     container.addEventListener('pointerleave', this.onPointerLeave)
@@ -99,14 +86,10 @@ export class Stage {
           status: this.status, elapsed: this.elapsed, quality: this.lowQuality ? 'economy' : 'full',
           drawCalls: this.renderer.info.render.calls, memory: this.renderer.info.memory,
           flowers: [...this.flowers.values()].map(layer => ({ ...layer.config })),
-          character: this.character?.snapshot() ?? null, contact: this.touch.snapshot(),
         }),
         motion: (enabled: boolean) => { this.motionEnabled = enabled; this.requestFrame() },
         petals: (visible: boolean) => { this.petals.mesh.visible = visible; this.requestFrame() },
-        layer: (name: string, visible: boolean) => { const layer = this.flowers.get(name); if (layer) layer.mesh.visible = visible; this.layoutCharacter(); this.requestFrame() },
-        character: (visible: boolean) => { this.characterVisible = visible; this.character?.setVisible(visible); this.requestFrame() },
-        part: (name: string, visible: boolean) => { this.character?.showPart(name, visible); this.requestFrame() },
-        contact: (visible: boolean) => { this.touch.enabled = visible; this.requestFrame() },
+        layer: (name: string, visible: boolean) => { const layer = this.flowers.get(name); if (layer) layer.mesh.visible = visible; this.requestFrame() },
       } })
     }
     this.requestFrame()
@@ -114,12 +97,10 @@ export class Stage {
 
   retry() {
     if (this.disposed) return
-    if (this.flowers.size < FLOWER_LAYERS.length && !this.loadingFlowers) void this.loadFlowers()
-    if (!this.character?.animated && !this.loadingCharacter) void this.loadCharacter()
+    if (this.flowers.size < FLOWER_LAYERS.length) void this.loadFlowers()
   }
 
   private async loadFlowers() {
-    this.loadingFlowers = true
     this.report('flowers', { state: 'loading', message: '加载三层花海' })
     const results = await Promise.allSettled(FLOWER_LAYERS.filter(config => !this.flowers.has(config.name)).map(async config => {
       const layer = await loadFlower(config, this.abort.signal)
@@ -127,10 +108,8 @@ export class Stage {
       this.flowers.set(config.name, layer)
       ;(config.name === 'far' ? this.background : this.foreground).add(layer.mesh)
       layer.resize(this.aspect)
-      this.layoutCharacter()
       this.requestFrame()
     }))
-    this.loadingFlowers = false
     if (this.disposed) return
     const failures = results.filter((result): result is PromiseRejectedResult => result.status === 'rejected')
     this.report('flowers', failures.length
@@ -138,72 +117,8 @@ export class Stage {
       : { state: 'ready', message: '三层花海就绪' })
   }
 
-  private async loadCharacter() {
-    this.loadingCharacter = true
-    this.report('character', { state: 'loading', message: '拼接爱莉希雅与风动发片' })
-    try {
-      const character = await loadCharacter(this.abort.signal)
-      if (this.disposed) { character.dispose(); return }
-      this.replaceCharacter(character)
-      this.report('character', { state: 'ready', message: '爱莉希雅 · 风动发片、头纱与花间星屑就绪' })
-    } catch (failure) {
-      if (this.disposed) return
-      if (!this.character) {
-        try {
-          const fallback = await loadCharacter(this.abort.signal, true)
-          if (this.disposed) { fallback.dispose(); return }
-          this.replaceCharacter(fallback)
-        } catch {
-          if (this.disposed) return
-        }
-      }
-      this.report('character', {
-        state: this.character ? 'degraded' : 'error', retryable: true,
-        message: `${this.character ? '保留静态爱莉希雅' : '角色暂不可用，登录不受影响'}：${errorMessage(failure)}`,
-      })
-    } finally {
-      this.loadingCharacter = false
-      this.requestFrame()
-    }
-  }
-
-  private replaceCharacter(character: CharacterRig) {
-    this.character?.dispose()
-    this.character = character
-    character.setVisible(this.characterVisible)
-    this.foreground.add(character.group)
-    this.layoutCharacter()
-    this.requestFrame()
-  }
-
-  private layoutCharacter() {
-    if (!this.character) return
-    const bounds = this.container.getBoundingClientRect()
-    const card = this.options.card?.getBoundingClientRect()
-    const width = this.container.clientWidth
-    const height = this.container.clientHeight
-    const sources = ['mid', 'front'].map(name => this.flowers.get(name)).filter((layer): layer is FlowerLayer => !!layer?.mesh.visible)
-    const { minimumCoverage, safetyPixels } = this.character.requirements
-    const key = `${width}:${height}:${minimumCoverage}:${safetyPixels}:${sources.map(layer => layer.config.name).join(',')}`
-    if (!this.coverageCache || this.coverageCache.key !== key) {
-      this.coverageCache = { key, field: new FlowerCoverage(width, height, minimumCoverage, safetyPixels, sources) }
-    }
-    this.character.resize({
-      width, height,
-      card: card ? { left: card.left - bounds.left, right: card.right - bounds.left, top: card.top - bounds.top, bottom: card.bottom - bounds.top } : undefined,
-      coverage: this.coverageCache.field,
-    })
-    this.report('character', this.characterResourceStatus)
-  }
-
   private report(name: ResourceName, status: ResourceStatus) {
     if (this.disposed) return
-    if (name === 'character') {
-      this.characterResourceStatus = status
-      if (status.state !== 'loading' && this.character && !this.character.coverageSatisfied) {
-        status = { ...status, state: 'degraded', message: `角色暂隐藏，登录可用：${this.character.hiddenReason}${status.retryable ? `；${status.message}` : ''}` }
-      }
-    }
     this.status = { ...this.status, [name]: status }
     this.container.dataset[name] = status.state
     this.options.onStatus(this.status)
@@ -223,8 +138,6 @@ export class Stage {
     this.screenCamera.updateProjectionMatrix()
     this.sky.resize(aspect)
     this.flowers.forEach(layer => layer.resize(aspect))
-    this.layoutCharacter()
-    this.touch.resize(width, height)
     this.requestFrame()
   }
 
@@ -255,9 +168,6 @@ export class Stage {
     this.bloom.strength = theme.bloom
     this.sky.update(this.elapsed, theme)
     this.flowers.forEach(layer => layer.update(this.elapsed, this.wind, theme, moving))
-    this.character?.update(motionDelta, this.elapsed, this.wind, theme, moving)
-    const contact = this.flowers.get('front')?.mesh.visible ? this.character?.contact() ?? null : null
-    this.touch.update(motionDelta, this.elapsed, contact, this.wind, theme, moving, this.lowQuality)
     this.petals.update(motionDelta, this.elapsed, this.wind, this.aspect, theme, this.lowQuality)
     this.renderer.info.reset()
     this.composer.render()
@@ -313,10 +223,6 @@ export class Stage {
     document.removeEventListener('visibilitychange', this.onVisibility)
     this.renderer.domElement.removeEventListener('webglcontextlost', this.onContextLost)
     this.flowers.forEach(layer => layer.dispose())
-    this.flowers.clear()
-    this.coverageCache = null
-    this.character?.dispose()
-    this.touch.dispose()
     this.sky.dispose()
     this.petals.dispose()
     this.composer.passes.forEach(pass => pass.dispose())

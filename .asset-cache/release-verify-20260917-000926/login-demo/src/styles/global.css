@@ -1,0 +1,432 @@
+:root {
+  --ink: #2b1a22;
+  --ink-soft: rgba(43, 26, 34, 0.62);
+  --card: rgba(255, 255, 255, 0.55);
+  --card-border: rgba(255, 255, 255, 0.65);
+  --primary: #dc185d;
+  --ember: #d43d51;
+  --line: rgba(43, 26, 34, 0.35);
+  --amber: #d97706;
+  --orchid: #8b5cd6;
+  --halo: rgba(255, 226, 240, 0.9);
+  --particle-tint: #f9a8c9;
+  --seal-color: #d97706;
+  --seal-glow: rgba(217, 119, 6, 0.3);
+  --sky-top: #fbf6ff;
+  --sky-horizon: #ffffff;
+  --error-bg: rgba(181, 41, 70, 0.1);
+}
+
+body {
+  margin: 0;
+  font-family: 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
+  color: var(--ink);
+  background: linear-gradient(var(--sky-top), var(--sky-horizon));
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* —— 夜间 DOM 配色（与场景昼夜同步） —— */
+.theme-night {
+  --ink: #f3e6ef;
+  --ink-soft: rgba(243, 230, 239, 0.6);
+  --card: rgba(26, 20, 38, 0.55);
+  --card-border: rgba(255, 255, 255, 0.14);
+  --line: rgba(243, 230, 239, 0.35);
+  --primary: #b8bcff;
+  --particle-tint: #decaff;
+  --halo: rgba(201, 200, 255, 0.9);
+}
+
+.stage-root {
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(var(--sky-top), var(--sky-horizon));
+}
+
+.stage-root canvas {
+  display: block;
+}
+
+/* —— 登录布局：表单居左 —— */
+.login-layer {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+}
+
+.login-card {
+  pointer-events: auto;
+  box-sizing: border-box;
+  width: min(440px, calc(100vw - 48px));
+  margin-left: clamp(24px, 7vw, 120px);
+  padding: 34px 34px 28px;
+  border-radius: 18px;
+  border: 1px solid var(--card-border);
+  background: var(--card);
+  backdrop-filter: blur(16px) saturate(1.15);
+  -webkit-backdrop-filter: blur(16px) saturate(1.15);
+  box-shadow: 0 18px 50px rgba(80, 20, 50, 0.18);
+}
+
+.brand {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 26px;
+}
+
+.brand b {
+  font-family: Georgia, 'Songti SC', 'SimSun', serif;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.brand span {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.32em;
+  color: var(--ink-soft);
+}
+
+/* 下划线输入（顶部留白补偿已删除的标题行，维持卡片原尺寸） */
+.line-input {
+  position: relative;
+  margin-top: 44px;
+}
+
+.line-input input {
+  box-sizing: border-box;
+  width: 100%;
+  height: 40px;
+  padding: 0 30px 8px 0;
+  border: none;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
+  font-size: 14px;
+  color: var(--ink);
+  outline: none;
+  transition: border-color 0.3s ease;
+}
+
+.line-input input::placeholder {
+  color: var(--ink-soft);
+}
+
+.line-input .ink-line {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 2px;
+  width: 100%;
+  background: var(--primary);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 0.3s ease-out;
+}
+
+.line-input input:focus ~ .ink-line {
+  transform: scaleX(1);
+}
+
+.eye {
+  position: absolute;
+  right: 0;
+  top: 10px;
+  border: none;
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+  padding: 2px;
+}
+
+.eye:hover {
+  color: var(--primary);
+}
+
+/* 错误条 */
+.error-tip {
+  margin-top: 10px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ember);
+  background: var(--error-bg);
+}
+
+/* 粒子按钮 */
+.particle-zone {
+  position: relative;
+  margin-top: 22px;
+}
+
+.particle-zone .particles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.particle-zone .particles span {
+  position: absolute;
+  border-radius: 999px;
+  opacity: 0;
+  transition: opacity 0.5s ease-out;
+}
+
+.login-btn {
+  position: relative;
+  width: 100%;
+  height: 42px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: box-shadow 0.25s ease;
+}
+
+.login-btn:hover:not(:disabled),
+.login-btn:focus-visible:not(:disabled) {
+  color: var(--primary);
+}
+
+.login-btn:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.loading-spin {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  margin-right: 8px;
+  vertical-align: -2px;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* 页脚出处 */
+.credits {
+  position: fixed;
+  right: 14px;
+  bottom: 12px;
+  font-size: 10px;
+  color: var(--ink-soft);
+  pointer-events: none;
+}
+
+/* 刻印式昼夜切换（视口左下角） */
+.seal-toggle {
+  position: fixed;
+  left: 22px;
+  bottom: 22px;
+  z-index: 60;
+  width: 42px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1.5px solid var(--seal-color);
+  background: transparent;
+  transform: rotate(-8deg);
+  cursor: pointer;
+  transition: filter 0.3s ease;
+  box-shadow: 0 0 12px var(--seal-glow);
+}
+
+.seal-toggle.night {
+  border-color: var(--seal-color);
+  box-shadow: 0 0 12px var(--seal-glow);
+}
+
+.seal-toggle:hover {
+  filter: brightness(1.25);
+}
+
+.seal-toggle svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* 登录成功转场光晕 */
+.halo {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    circle at 28% 50%,
+    rgba(255, 236, 246, 0.95),
+    rgba(251, 77, 136, 0.45) 34%,
+    transparent 68%
+  );
+  opacity: 0;
+  transform: scale(1.4);
+}
+
+.halo.play {
+  animation: halo-burst 0.9s ease-out forwards;
+}
+
+@keyframes halo-burst {
+  0% {
+    opacity: 0;
+    transform: scale(1.4);
+  }
+  35% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+}
+
+/* 固定首页 */
+.home {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  background: linear-gradient(172deg, var(--sky-top), var(--sky-horizon));
+  color: var(--ink);
+}
+
+.theme-night .home {
+  background: linear-gradient(172deg, var(--sky-top), var(--sky-horizon));
+  color: var(--ink);
+}
+
+.home h1 {
+  margin: 0;
+  font-family: Georgia, 'Songti SC', 'SimSun', serif;
+  font-size: 28px;
+  letter-spacing: 0.06em;
+}
+
+.home p {
+  margin: 0;
+  font-size: 13px;
+  opacity: 0.7;
+}
+
+.home button {
+  margin-top: 18px;
+  padding: 9px 26px;
+  border-radius: 999px;
+  border: 1px solid var(--home-border);
+  background: transparent;
+  color: var(--primary);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.25s ease, color 0.25s ease;
+}
+
+.home button:hover {
+  background: var(--home-hover);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    transition-duration: 0s !important;
+    animation: none !important;
+  }
+  .halo.play {
+    animation: none;
+    opacity: 0;
+  }
+}
+
+button:focus-visible,
+summary:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 5px;
+}
+
+.scene-status {
+  position: fixed;
+  right: 16px;
+  bottom: 38px;
+  z-index: 20;
+  max-width: min(340px, calc(100vw - 100px));
+  padding: 8px 12px;
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  background: var(--card);
+  backdrop-filter: blur(12px);
+  color: var(--ink-soft);
+  font-size: 11px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.scene-status summary {
+  cursor: pointer;
+}
+
+.scene-status ul {
+  margin: 8px 0 0;
+  padding-left: 16px;
+}
+
+.scene-status.has-error {
+  color: var(--ink);
+}
+
+.scene-status button {
+  margin-top: 10px;
+  padding: 6px 10px;
+  border: 1px solid var(--primary);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--primary);
+  cursor: pointer;
+}
+
+.scene-status button:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+
+@media (max-width: 767px) {
+  .login-layer {
+    align-items: flex-end;
+    padding-bottom: max(110px, env(safe-area-inset-bottom));
+    box-sizing: border-box;
+  }
+
+  .login-card {
+    width: calc(100vw - 32px);
+    margin-left: 16px;
+    padding: 24px;
+  }
+
+  .brand { margin-bottom: 18px; }
+  .credits {
+    left: 16px;
+    right: 16px;
+    bottom: 8px;
+    text-align: right;
+    font-size: 9px;
+  }
+}

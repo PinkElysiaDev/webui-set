@@ -1,0 +1,15 @@
+127.0.0.1 - - [17/Sep/2026 00:12:17] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [17/Sep/2026 00:12:17] "GET /assets/index-BJVCLrca.js HTTP/1.1" 200 -
+127.0.0.1 - - [17/Sep/2026 00:12:17] "GET /assets/index-B2eUxvjf.css HTTP/1.1" 200 -
+127.0.0.1 - - [17/Sep/2026 00:12:17] "GET /assets/scene/far.png HTTP/1.1" 200 -
+127.0.0.1 - - [17/Sep/2026 00:12:17] "GET /assets/character/manifest.json HTTP/1.1" 200 -
+127.0.0.1 - - [17/Sep/2026 00:12:17] "GET /assets/scene/front.png HTTP/1.1" 200 -
+127.0.0.1 - - [17/Sep/2026 00:12:17] "GET /assets/scene/mid.png HTTP/1.1" 200 -
+127.0.0.1 - - [17/Sep/2026 00:12:18] "GET /assets/character/body.png HTTP/1.1" 200 -
+127.0.0.1 - - [17/Sep/2026 00:12:18] "GET /assets/character/back-hair.png HTTP/1.1" 200 -
+127.0.0.1 - - [17/Sep/2026 00:12:18] "GET /assets/character/body-front.png HTTP/1.1" 200 -
+127.0.0.1 - - [17/Sep/2026 00:12:18] "GET /assets/character/front-hair.png HTTP/1.1" 200 -
+127.0.0.1 - - [17/Sep/2026 00:12:18] "GET /assets/character/ribbon-upper.png HTTP/1.1" 200 -
+127.0.0.1 - - [17/Sep/2026 00:12:18] "GET /assets/character/ribbon-lower.png HTTP/1.1" 200 -
+127.0.0.1 - - [17/Sep/2026 00:12:18] "GET /assets/character/veil.png HTTP/1.1" 200 -
+127.0.0.1 - - [17/Sep/2026 00:12:18] "GET /assets/character/ornament.png HTTP/1.1" 200 -

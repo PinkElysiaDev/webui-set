@@ -1,0 +1,60 @@
+0 verbose cli D:\DevTools\nodejs\node.exe D:\DevTools\nodejs\node_modules\npm\bin\npm-cli.js
+1 info using npm@11.16.0
+2 info using node@v24.18.0
+3 silly config load:file:D:\DevTools\nodejs\node_modules\npm\npmrc
+4 silly config load:file:D:\DevProjects\Elysia-API\login-demo\.npmrc
+5 silly config load:file:C:\Users\xiaolan\.npmrc
+6 silly config load:file:C:\Users\xiaolan\AppData\Roaming\npm\etc\npmrc
+7 verbose title npm install
+8 verbose argv "install" "--no-audit" "--no-fund" "--cache" ".\\.npm-cache"
+9 verbose logfile logs-max:10 dir:D:\DevProjects\Elysia-API\login-demo\.npm-cache\_logs\2026-09-16T01_19_33_377Z-
+10 verbose logfile D:\DevProjects\Elysia-API\login-demo\.npm-cache\_logs\2026-09-16T01_19_33_377Z-debug-0.log
+11 silly logfile done cleaning log files
+12 silly packumentCache heap:4496293888 maxSize:1124073472 maxEntrySize:562036736
+13 silly idealTree buildDeps
+14 silly fetch manifest sharp@0.34.3
+15 silly packumentCache full:https://registry.npmjs.org/sharp cache-miss
+16 verbose shrinkwrap failed to load node_modules/.package-lock.json out of date, updated: node_modules
+17 http fetch GET https://registry.npmjs.org/npm attempt 1 failed with EACCES
+18 http fetch GET https://registry.npmjs.org/sharp attempt 1 failed with EACCES
+19 http fetch GET https://registry.npmjs.org/npm attempt 2 failed with EACCES
+20 http fetch GET https://registry.npmjs.org/sharp attempt 2 failed with EACCES
+21 http fetch GET https://registry.npmjs.org/npm attempt 3 failed with EACCES
+22 http fetch GET https://registry.npmjs.org/sharp attempt 3 failed with EACCES
+23 silly placeDep ROOT sharp@ OK for: login-demo@0.1.0 want: 0.34.3
+24 verbose type system
+25 verbose stack FetchError: request to https://registry.npmjs.org/sharp failed, reason: 
+25 verbose stack     at ClientRequest.<anonymous> (D:\DevTools\nodejs\node_modules\npm\node_modules\minipass-fetch\lib\index.js:130:14)
+25 verbose stack     at ClientRequest.emit (node:events:509:28)
+25 verbose stack     at emitErrorEvent (node:_http_client:109:11)
+25 verbose stack     at _destroy (node:_http_client:993:9)
+25 verbose stack     at onSocketNT (node:_http_client:1014:5)
+25 verbose stack     at process.processTicksAndRejections (node:internal/process/task_queues:91:21)
+26 error code EACCES
+27 error errno EACCES
+28 error FetchError: request to https://registry.npmjs.org/sharp failed, reason: 
+28 error     at ClientRequest.<anonymous> (D:\DevTools\nodejs\node_modules\npm\node_modules\minipass-fetch\lib\index.js:130:14)
+28 error     at ClientRequest.emit (node:events:509:28)
+28 error     at emitErrorEvent (node:_http_client:109:11)
+28 error     at _destroy (node:_http_client:993:9)
+28 error     at onSocketNT (node:_http_client:1014:5)
+28 error     at process.processTicksAndRejections (node:internal/process/task_queues:91:21) {
+28 error   code: 'EACCES',
+28 error   errno: 'EACCES',
+28 error   type: 'system',
+28 error   requiredBy: '.'
+28 error }
+29 error
+29 error The operation was rejected by your operating system.
+29 error It's possible that the file was already in use (by a text editor or antivirus), or that you lack permissions to access it.
+29 error
+29 error If you believe this might be a permissions issue, please double-check the permissions of the file and its containing directories, or try running the command again as root/Administrator.
+30 silly unfinished npm timer reify 1789521573897
+31 silly unfinished npm timer reify:loadTrees 1789521573897
+32 verbose cwd D:\DevProjects\Elysia-API\login-demo
+33 verbose os Windows_NT 10.0.26100
+34 verbose node v24.18.0
+35 verbose npm  v11.16.0
+36 verbose exit 1
+37 verbose code 1
+38 error A complete log of this run can be found in: D:\DevProjects\Elysia-API\login-demo\.npm-cache\_logs\2026-09-16T01_19_33_377Z-debug-0.log

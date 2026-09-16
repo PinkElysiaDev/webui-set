@@ -1,0 +1,11 @@
+{
+  "archive": "login-demo-20260917.zip",
+  "servedFromExtractedDist": true,
+  "desktop": "passed",
+  "mobile": "passed",
+  "theme": "passed",
+  "emptyAndWrongToken": "passed",
+  "login123": "passed",
+  "errors": [],
+  "failedAssets": []
+}

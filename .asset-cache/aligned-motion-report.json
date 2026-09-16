@@ -1,0 +1,249 @@
+{
+  "errors": [],
+  "snapshot": {
+    "status": {
+      "renderer": {
+        "state": "ready",
+        "message": "画布就绪"
+      },
+      "flowers": {
+        "state": "ready",
+        "message": "三层花海就绪"
+      },
+      "character": {
+        "state": "ready",
+        "message": "爱莉希雅 · 风动发片、头纱与花间星屑就绪"
+      }
+    },
+    "elapsed": 9.650000000000002,
+    "quality": "full",
+    "drawCalls": 28,
+    "memory": {
+      "geometries": 16,
+      "textures": 24
+    },
+    "flowers": [
+      {
+        "name": "far",
+        "shift": [
+          0,
+          0.14
+        ],
+        "scale": 1,
+        "root": 0.31,
+        "tip": 0.57,
+        "amplitude": 0.006,
+        "frequency": 1,
+        "phase": 0.4
+      },
+      {
+        "name": "front",
+        "shift": [
+          0,
+          0.04
+        ],
+        "scale": 1,
+        "root": 0,
+        "tip": 0.48,
+        "amplitude": 0.022,
+        "frequency": 1.9,
+        "phase": 3.2
+      },
+      {
+        "name": "mid",
+        "shift": [
+          0,
+          0.24
+        ],
+        "scale": 1,
+        "root": 0.25,
+        "tip": 0.62,
+        "amplitude": 0.013,
+        "frequency": 1.45,
+        "phase": 1.8
+      }
+    ],
+    "character": {
+      "animated": true,
+      "visible": true,
+      "placement": {
+        "horizontal": 620,
+        "vertical": 159.75,
+        "scale": 0.978125
+      },
+      "anchors": {
+        "head": {
+          "horizontal": 1568.78125,
+          "vertical": 220.39375
+        },
+        "face": {
+          "horizontal": 1614.7531250000002,
+          "vertical": 372.98125000000005
+        },
+        "hand": {
+          "horizontal": 1801.575,
+          "vertical": 761.296875
+        },
+        "hairRoot": {
+          "horizontal": 1568.78125,
+          "vertical": 252.671875
+        },
+        "fingertip": {
+          "horizontal": 1836.7875000000001,
+          "vertical": 803.35625
+        }
+      },
+      "burialDepth": 9.346874999999955,
+      "occlusionActive": true,
+      "contactVisible": true,
+      "layers": [
+        {
+          "id": "body",
+          "motion": "fixed",
+          "root": [
+            970,
+            95
+          ],
+          "visible": true,
+          "texture": [
+            1437,
+            806
+          ]
+        },
+        {
+          "id": "back-hair",
+          "motion": "hair",
+          "root": [
+            970,
+            95
+          ],
+          "visible": true,
+          "texture": [
+            1564,
+            982
+          ]
+        },
+        {
+          "id": "body-front",
+          "motion": "fixed",
+          "root": [
+            970,
+            95
+          ],
+          "visible": true,
+          "texture": [
+            471,
+            806
+          ]
+        },
+        {
+          "id": "front-hair",
+          "motion": "fringe",
+          "root": [
+            991,
+            103
+          ],
+          "visible": true,
+          "texture": [
+            429,
+            419
+          ]
+        },
+        {
+          "id": "ribbon-upper",
+          "motion": "ribbon",
+          "root": [
+            944,
+            65
+          ],
+          "visible": true,
+          "texture": [
+            1344,
+            346
+          ]
+        },
+        {
+          "id": "ribbon-lower",
+          "motion": "ribbon",
+          "root": [
+            944,
+            65
+          ],
+          "visible": true,
+          "texture": [
+            1418,
+            468
+          ]
+        },
+        {
+          "id": "veil",
+          "motion": "veil",
+          "root": [
+            944,
+            65
+          ],
+          "visible": true,
+          "texture": [
+            1585,
+            663
+          ]
+        },
+        {
+          "id": "ornament",
+          "motion": "fixed",
+          "root": [
+            944,
+            65
+          ],
+          "visible": true,
+          "texture": [
+            430,
+            335
+          ]
+        }
+      ]
+    },
+    "contact": {
+      "visible": true,
+      "origin": {
+        "horizontal": 1801.575,
+        "vertical": 751.95,
+        "scale": 0.978125,
+        "visible": true
+      },
+      "capacity": 16,
+      "active": [
+        {
+          "horizontal": 1780.6174780171941,
+          "vertical": 725.4210409039405,
+          "velocity": -22.609191461939613
+        },
+        {
+          "horizontal": 1781.119896647807,
+          "vertical": 732.5998053504477,
+          "velocity": -22.529793616890597
+        },
+        {
+          "horizontal": 1789.240685038295,
+          "vertical": 729.0771628546995,
+          "velocity": -20.911591132596282
+        },
+        {
+          "horizontal": 1789.1538120183045,
+          "vertical": 743.5042231825244,
+          "velocity": -19.97589992459994
+        },
+        {
+          "horizontal": 1795.1314345340984,
+          "vertical": 734.8238013116164,
+          "velocity": -21.161175208320156
+        },
+        {
+          "horizontal": 1799.9258755549438,
+          "vertical": 744.9793062696191,
+          "velocity": -12.655887009173256
+        }
+      ]
+    }
+  }
+}
