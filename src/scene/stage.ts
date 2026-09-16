@@ -3,7 +3,7 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js'
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js'
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js'
-import { FLOWER_LAYERS, loadFlower, type FlowerLayer } from './backdrop'
+import { FLOWER_LAYERS, loadFlower, type FlowerLayer, type FlowerLayerConfig } from './backdrop'
 import { loadCharacter, type CharacterRig } from './character'
 import { DayNightController } from './daynight'
 import { PetalLayer } from './petals'
@@ -53,6 +53,13 @@ export class Stage {
   private pointer: { x: number; y: number } | null = null
   private motionEnabled = true
   private aspect = 1
+  /** 入场时序（秒）：前景大花 → 中景 → 人物 → 远景小花带 → 登录面板收尾 */
+  private readonly revealSequence = { far: 2.4, mid: 1.2, character: 2.1, front: 0.3 }
+  private cardRevealStart = 3.3
+  private cardRevealed = false
+  private revealTracks: { layer: FlowerLayer; start: number; duration: number }[] = []
+  private characterReveal: { rig: CharacterRig; start: number; duration: number } | null = null
+  private characterRevealDone = false
   private inspectEnabled = import.meta.env.DEV && new URLSearchParams(location.search).has('inspect')
 
   constructor(private container: HTMLElement, private options: StageOptions) {
@@ -124,9 +131,11 @@ export class Stage {
     const results = await Promise.allSettled(FLOWER_LAYERS.filter(config => !this.flowers.has(config.name)).map(async config => {
       const layer = await loadFlower(config, this.abort.signal)
       if (this.disposed) { layer.dispose(); return }
+      layer.setReveal(this.options.reducedMotion ? 1 : 0)
       this.flowers.set(config.name, layer)
       ;(config.name === 'far' ? this.background : this.foreground).add(layer.mesh)
       layer.resize(this.aspect)
+      this.scheduleReveal(layer)
       this.layoutCharacter()
       this.requestFrame()
     }))
@@ -136,6 +145,44 @@ export class Stage {
     this.report('flowers', failures.length
       ? { state: 'error', message: `花海 ${this.flowers.size}/3 层可用：${errorMessage(failures[0].reason)}`, retryable: true }
       : { state: 'ready', message: '三层花海就绪' })
+  }
+
+  /**
+   * 入场时序淡入：天空 → 花海1(far) → 花海2(mid) → 人物 → 花海3(front)。
+   * 各元素按 revealSequence 的绝对时刻开始，1.4s 内 smoothstep 完成；
+   * 花层在纹理加载完成即排队（开始时刻晚于加载完成时取加载时刻，避免跳变）。
+   * 登录面板（DOM）按 cardRevealStart 由 container dataset 驱动 CSS 过渡。
+   */
+  private scheduleReveal(layer: FlowerLayer) {
+    if (this.options.reducedMotion) { layer.setReveal(1); return }
+    const start = Math.max(this.elapsed, this.revealSequence[layer.config.name])
+    this.revealTracks.push({ layer, start, duration: 1.4 })
+    this.requestFrame()
+  }
+
+  private scheduleCharacterReveal(rig: CharacterRig) {
+    if (this.options.reducedMotion) { rig.setReveal(1); return }
+    this.characterReveal = { rig, start: Math.max(this.elapsed, this.revealSequence.character), duration: 1.4 }
+    this.requestFrame()
+  }
+
+  private updateReveal() {
+    const active = this.revealTracks.length || this.characterReveal
+    if (!active) return
+    this.revealTracks = this.revealTracks.filter(track => {
+      const progress = THREE.MathUtils.clamp((this.elapsed - track.start) / track.duration, 0, 1)
+      const value = THREE.MathUtils.smoothstep(progress, 0, 1)
+      if (track.layer.reveal < value) track.layer.setReveal(value)
+      return progress < 1
+    })
+    if (this.characterReveal) {
+      const track = this.characterReveal
+      const progress = THREE.MathUtils.clamp((this.elapsed - track.start) / track.duration, 0, 1)
+      const value = THREE.MathUtils.smoothstep(progress, 0, 1)
+      if (!this.characterRevealDone) track.rig.setReveal(value)
+      if (progress >= 1) { track.rig.setReveal(1); this.characterReveal = null; this.characterRevealDone = true }
+    }
+    if (this.revealTracks.length || this.characterReveal) this.requestFrame()
   }
 
   private async loadCharacter() {
@@ -171,6 +218,8 @@ export class Stage {
     this.character?.dispose()
     this.character = character
     character.setVisible(this.characterVisible)
+    if (this.characterRevealDone) character.setReveal(1)
+    else this.scheduleCharacterReveal(character)
     this.foreground.add(character.group)
     this.layoutCharacter()
     this.requestFrame()
@@ -241,6 +290,37 @@ export class Stage {
 
   calmWind() { this.calmTime = 0 }
 
+  /** 调试：运行时改入场时序并整段重放（?sequence 面板用） */
+  replaySequence(sequence: { far: number; mid: number; character: number; front: number }) {
+    this.revealSequence.far = sequence.far
+    this.revealSequence.mid = sequence.mid
+    this.revealSequence.character = sequence.character
+    this.revealSequence.front = sequence.front
+    this.revealTracks = []
+    this.characterReveal = null
+    this.characterRevealDone = false
+    this.flowers.forEach(layer => layer.setReveal(0))
+    this.character?.setReveal(0)
+    const base = this.elapsed
+    FLOWER_LAYERS.forEach(config => {
+      const layer = this.flowers.get(config.name)
+      if (layer) this.revealTracks.push({ layer, start: base + sequence[config.name], duration: 1.4 })
+    })
+    if (this.character) this.scheduleCharacterReveal(this.character)
+    this.cardRevealStart = base + Math.max(sequence.far, sequence.mid, sequence.character, sequence.front) + 0.9
+    this.cardRevealed = false
+    this.requestFrame()
+  }
+
+  /** 登录面板最后显现：到点后给容器打 dataset 标记，CSS 过渡接手 */
+  private updateCardReveal() {
+    if (this.cardRevealed || this.disposed) return
+    if (this.options.reducedMotion || this.elapsed >= this.cardRevealStart) {
+      this.cardRevealed = true
+      this.container.dataset.cardReady = 'true'
+    }
+  }
+
   private render(delta: number) {
     if (this.disposed || this.lost) return
     const moving = !this.options.reducedMotion && this.motionEnabled
@@ -251,6 +331,8 @@ export class Stage {
       this.wind.calm = 1 - THREE.MathUtils.smoothstep(this.calmTime, 0, 0.6)
     }
     this.wind.update(motionDelta)
+    this.updateReveal()
+    this.updateCardReveal()
     const theme = this.options.theme.snapshot
     this.bloom.strength = theme.bloom
     this.sky.update(this.elapsed, theme)

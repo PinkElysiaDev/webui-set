@@ -6,6 +6,9 @@ import { useSceneTheme } from '../app/theme'
 import { ParticleButton } from './ParticleButton'
 import { SealToggle } from './SealToggle'
 import { TokenLineInput } from './TokenLineInput'
+import { SequencePanel } from './SequencePanel'
+
+const sequenceTool = import.meta.env.DEV && new URLSearchParams(location.search).has('sequence')
 
 export function LoginPage() {
   const mountRef = useRef<HTMLDivElement>(null)
@@ -80,6 +83,7 @@ export function LoginPage() {
         </form>
       </div>
       <SealToggle night={mode === 'night'} onToggle={toggleMode} />
+      {sequenceTool && <SequencePanel stageRef={stageRef} />}
       <div ref={haloRef} className="halo" aria-hidden />
       <details className={`scene-status ${retryable ? 'has-error' : ''}`} open={pending || retryable}>
         <summary aria-live="polite">{pending ? '场景加载中 · 登录可用' : complete ? '花海与爱莉希雅已就绪' : '场景部分可用 · 查看详情'}</summary>

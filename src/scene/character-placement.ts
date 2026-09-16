@@ -16,8 +16,9 @@ export function screenRect(rect: Rect, placement: Placement): Rect {
 export function placeCharacter(manifest: CharacterManifest, viewport: CharacterViewport) {
   const { width, height, card, coverage } = viewport
   const narrow = width < 1024
-  const right = width - Math.max(24, width * 0.025)
-  const left = (card?.right ?? width * 0.34) + 24
+  // 桌面布局中卡片是右侧竖向面板，立绘放在面板左侧；窄屏（底部面板）沿用原有策略
+  const right = !narrow && card ? card.left - 24 : width - Math.max(24, width * 0.025)
+  const left = narrow ? width * 0.34 : 24
   const initialScale = narrow
     ? Math.min(width * 0.82 / 240, height * 0.95 / 720)
     : Math.min(Math.max(120, right - left - 36) / manifest.canvas[0], height * 0.76 / manifest.canvas[1])
